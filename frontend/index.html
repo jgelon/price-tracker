@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PriceWatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0f14;
+      --surface: #151820;
+      --surface2: #1c2030;
+      --border: #252a3a;
+      --accent: #00e5a0;
+      --accent-dim: rgba(0,229,160,.12);
+      --red: #ff5470;
+      --red-dim: rgba(255,84,112,.12);
+      --yellow: #ffd166;
+      --text: #e8eaf2;
+      --text-muted: #6b7294;
+      --text-dim: #9198b8;
+      --radius: 12px;
+      --mono: 'DM Mono', monospace;
+      --sans: 'Syne', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 220px;
+      min-height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0;
+      position: sticky;
+      top: 0;
+      flex-shrink: 0;
+    }
+    .logo {
+      padding: 0 24px 32px;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+    }
+    .logo span { color: var(--text); }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+      border-left: 3px solid transparent;
+    }
+    .nav-item:hover { color: var(--text); background: var(--surface2); }
+    .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-dim); }
+    .nav-icon { font-size: 18px; width: 22px; text-align: center; }
+
+    /* ── Main ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .topbar {
+      height: 64px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      background: var(--surface);
+    }
+    .topbar-title { font-size: 18px; font-weight: 700; }
+    .topbar-actions { display: flex; gap: 10px; }
+
+    .content { padding: 32px; flex: 1; overflow-y: auto; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all .15s;
+    }
+    .btn-primary { background: var(--accent); color: #0d0f14; }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+    .btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,84,112,.2); }
+    .btn-danger:hover { background: rgba(255,84,112,.25); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    /* ── Stats row ── */
+    .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
+    .stat-value { font-size: 32px; font-weight: 800; margin-top: 6px; color: var(--text); }
+    .stat-value.green { color: var(--accent); }
+    .stat-value.red { color: var(--red); }
+
+    /* ── Product cards ── */
+    .products-grid { display: flex; flex-direction: column; gap: 12px; }
+    .product-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 16px;
+      align-items: center;
+      transition: border-color .15s;
+    }
+    .product-card:hover { border-color: rgba(255,255,255,.12); }
+    .product-card.has-discount { border-left: 3px solid var(--accent); }
+    .product-img {
+      width: 56px; height: 56px;
+      border-radius: 8px;
+      object-fit: contain;
+      background: var(--surface2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .product-img img { width: 100%; height: 100%; object-fit: contain; }
+    .product-info { min-width: 0; }
+    .product-name {
+      font-size: 15px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .product-url {
+      font-size: 11px; color: var(--text-muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-top: 2px; font-family: var(--mono);
+    }
+    .product-meta { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+    .badge {
+      font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+      font-family: var(--mono);
+    }
+    .badge-green { background: var(--accent-dim); color: var(--accent); }
+    .badge-muted { background: var(--surface2); color: var(--text-muted); }
+    .badge-red { background: var(--red-dim); color: var(--red); }
+
+    .product-price { text-align: right; flex-shrink: 0; }
+    .price-current { font-size: 22px; font-weight: 800; font-family: var(--mono); }
+    .price-original { font-size: 13px; color: var(--text-muted); text-decoration: line-through; font-family: var(--mono); }
+    .price-discount { font-size: 13px; font-weight: 700; color: var(--accent); }
+    .product-actions { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      width: 480px;
+      max-width: 95vw;
+      transform: translateY(16px);
+      transition: transform .2s;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 24px; }
+
+    .form-group { margin-bottom: 18px; }
+    .form-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); margin-bottom: 7px; display: block; }
+    .form-input, .form-select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .form-input:focus, .form-select:focus { border-color: var(--accent); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-hint { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+    /* ── Settings ── */
+    .settings-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+    .settings-section-title { font-size: 14px; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+
+    /* ── History chart ── */
+    .history-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .history-title { font-size: 14px; font-weight: 700; margin-bottom: 18px; }
+    .chart-container { position: relative; height: 160px; }
+    .chart-svg { width: 100%; height: 100%; }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; padding: 80px 24px; }
+    .empty-icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .empty-desc { color: var(--text-muted); font-size: 14px; }
+
+    /* ── Toast ── */
+    .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      animation: slideIn .25s ease;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .toast.success { border-color: var(--accent); color: var(--accent); }
+    .toast.error { border-color: var(--red); color: var(--red); }
+    @keyframes slideIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── Status dot ── */
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dot-green { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .dot-muted { background: var(--text-muted); }
+
+    /* ── Tab view ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Toggle ── */
+    .toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .toggle-switch {
+      width: 40px; height: 22px;
+      background: var(--border);
+      border-radius: 11px;
+      position: relative;
+      transition: background .15s;
+      flex-shrink: 0;
+    }
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: left .15s;
+    }
+    .toggle-switch.on { background: var(--accent); }
+    .toggle-switch.on::after { left: 21px; }
+    .toggle-label { font-size: 13px; color: var(--text-dim); }
+
+    /* loading spinner */
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .product-card { grid-template-columns: 40px 1fr; }
+      .product-price { grid-column: 2; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="logo">Price<span>Watch</span></div>
+  <div class="nav-item active" data-view="dashboard" onclick="showView('dashboard', this)">
+    <span class="nav-icon">📊</span> Dashboard
+  </div>
+  <div class="nav-item" data-view="products" onclick="showView('products', this)">
+    <span class="nav-icon">🛒</span> Products
+  </div>
+  <div class="nav-item" data-view="settings" onclick="showView('settings', this)">
+    <span class="nav-icon">⚙️</span> Settings
+  </div>
+</nav>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="view-title">Dashboard</div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost" onclick="checkAllNow()" id="check-btn">
+        <span>🔄</span> Check All
+      </button>
+      <button class="btn btn-primary" onclick="openAddModal()">
+        <span>+</span> Add Product
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Dashboard view -->
+    <div class="view active" id="view-dashboard">
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card"><div class="stat-label">Tracking</div><div class="stat-value" id="stat-total">—</div></div>
+        <div class="stat-card"><div class="stat-label">On Sale</div><div class="stat-value green" id="stat-sale">—</div></div>
+        <div class="stat-card"><div class="stat-label">Best Discount</div><div class="stat-value green" id="stat-best">—</div></div>
+        <div class="stat-card"><div class="stat-label">Alerts Sent</div><div class="stat-value" id="stat-alerts">—</div></div>
+      </div>
+      <div id="dashboard-products"></div>
+    </div>
+
+    <!-- Products view -->
+    <div class="view" id="view-products">
+      <div id="products-list"></div>
+    </div>
+
+    <!-- Settings view -->
+    <div class="view" id="view-settings">
+      <div class="settings-section">
+        <div class="settings-section-title">🔔 Slack Notifications</div>
+        <div class="form-group">
+          <label class="form-label">Webhook URL</label>
+          <input class="form-input" id="s-slack" placeholder="https://hooks.slack.com/services/..." />
+          <div class="form-hint">Create an Incoming Webhook in your Slack App settings</div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">📧 Email Notifications</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">SMTP Host</label>
+            <input class="form-input" id="s-smtp-host" placeholder="smtp.gmail.com" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">SMTP Port</label>
+            <input class="form-input" id="s-smtp-port" placeholder="587" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Username / Email</label>
+            <input class="form-input" id="s-smtp-user" placeholder="you@gmail.com" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password / App Password</label>
+            <input class="form-input" type="password" id="s-smtp-pass" placeholder="••••••••" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Send alerts to</label>
+          <input class="form-input" id="s-notify-email" placeholder="alerts@example.com" />
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">📱 Pushbullet</div>
+        <div class="form-group">
+          <label class="form-label">API Key</label>
+          <input class="form-input" id="s-pushbullet" placeholder="o.xxxxxxxxxxxxxxxxxxxxxxxx" />
+          <div class="form-hint">Found in your Pushbullet account settings</div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">⏱ Check Interval</div>
+        <div class="form-group">
+          <label class="form-label">Check every N minutes</label>
+          <input class="form-input" id="s-interval" type="number" placeholder="60" min="5" />
+          <div class="form-hint">Minimum recommended: 30 minutes to avoid being rate-limited</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Add/Edit Product Modal -->
+<div class="modal-overlay" id="product-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Add Product</div>
+    <div class="form-group">
+      <label class="form-label">Product URL *</label>
+      <input class="form-input" id="m-url" placeholder="https://www.etos.nl/producten/..." />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Custom Name (optional)</label>
+      <input class="form-input" id="m-name" placeholder="Auto-detected from page" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Alert when discount ≥</label>
+      <input class="form-input" id="m-threshold" type="number" value="5" min="1" max="90" />
+      <div class="form-hint">Send notification only when price drops by this percentage</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-save-btn" onclick="saveProduct()">
+        <span id="modal-spinner"></span> Add Product
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const API = '';  // same-origin; set to 'http://NAS-IP:5000' if running separately
+
+let products = [];
+let editingId = null;
+
+// ── Nav ──────────────────────────────────────────────────────────────────────
+function showView(name, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('view-title').textContent =
+    { dashboard: 'Dashboard', products: 'Products', settings: 'Settings' }[name];
+  if (name === 'settings') loadSettings();
+}
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// ── Load products ─────────────────────────────────────────────────────────────
+async function loadProducts() {
+  try {
+    products = await apiFetch('/api/products');
+    renderDashboard();
+    renderProducts();
+  } catch(e) { toast('Could not reach backend', 'error'); }
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const active = products.filter(p => p.active);
+  const onSale = active.filter(p => p.discount_pct > 0);
+  const best   = onSale.length ? Math.max(...onSale.map(p => p.discount_pct)) : 0;
+
+  document.getElementById('stat-total').textContent = active.length;
+  document.getElementById('stat-sale').textContent  = onSale.length;
+  document.getElementById('stat-best').textContent  = best ? best + '%' : '—';
+  document.getElementById('stat-alerts').textContent = '—';
+
+  const sorted = [...products].sort((a,b) => (b.discount_pct||0)-(a.discount_pct||0));
+  document.getElementById('dashboard-products').innerHTML = sorted.length
+    ? `<div class="products-grid">${sorted.map(productCard).join('')}</div>`
+    : emptyState();
+}
+
+function renderProducts() {
+  document.getElementById('products-list').innerHTML = products.length
+    ? `<div class="products-grid">${products.map(productCard).join('')}</div>`
+    : emptyState();
+}
+
+function productCard(p) {
+  const hasDiscount = p.discount_pct > 0;
+  const imgHtml = p.image_url
+    ? `<img src="${p.image_url}" onerror="this.style.display='none'" />`
+    : '🛍️';
+
+  const priceHtml = p.current_price != null
+    ? `<div class="price-current">${p.currency}${p.current_price.toFixed(2)}</div>
+       ${p.original_price ? `<div class="price-original">${p.currency}${p.original_price.toFixed(2)}</div>` : ''}
+       ${hasDiscount ? `<div class="price-discount">↓${p.discount_pct}%</div>` : ''}`
+    : `<div class="price-current" style="color:var(--text-muted);font-size:14px">Pending</div>`;
+
+  const lastChecked = p.last_checked
+    ? new Date(p.last_checked).toLocaleString('nl-NL', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })
+    : 'Never';
+
+  return `
+  <div class="product-card ${hasDiscount ? 'has-discount' : ''}" id="card-${p.id}">
+    <div class="product-img">${imgHtml}</div>
+    <div class="product-info">
+      <div class="product-name">${escHtml(p.name)}</div>
+      <div class="product-url">${escHtml(p.url)}</div>
+      <div class="product-meta">
+        <span class="dot ${p.active ? 'dot-green' : 'dot-muted'}"></span>
+        ${hasDiscount ? `<span class="badge badge-green">ON SALE</span>` : ''}
+        <span class="badge badge-muted">≥${p.threshold_pct}% alert</span>
+        <span style="font-size:11px;color:var(--text-muted)">Checked: ${lastChecked}</span>
+      </div>
+      <div class="product-actions">
+        <button class="btn btn-ghost btn-sm" onclick="checkOne(${p.id})">🔄 Check</button>
+        <button class="btn btn-ghost btn-sm" onclick="showHistory(${p.id})">📈 History</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleProduct(${p.id}, ${!p.active})">${p.active ? '⏸ Pause' : '▶ Resume'}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">🗑 Delete</button>
+      </div>
+    </div>
+    <div class="product-price">${priceHtml}</div>
+  </div>`;
+}
+
+function emptyState() {
+  return `<div class="empty">
+    <div class="empty-icon">🔍</div>
+    <div class="empty-title">No products yet</div>
+    <div class="empty-desc">Click "+ Add Product" to start tracking prices</div>
+  </div>`;
+}
+
+// ── Product actions ───────────────────────────────────────────────────────────
+async function checkOne(id) {
+  toast('Checking price…', 'success');
+  try {
+    await apiFetch(`/api/products/${id}/check`, { method: 'POST' });
+    await loadProducts();
+    toast('Price updated!', 'success');
+  } catch(e) { toast('Check failed', 'error'); }
+}
+
+async function checkAllNow() {
+  const btn = document.getElementById('check-btn');
+  btn.innerHTML = '<span class="spinner"></span> Checking…';
+  btn.disabled = true;
+  try {
+    await apiFetch('/api/check-all', { method: 'POST' });
+    await loadProducts();
+    toast('All prices updated!', 'success');
+  } catch(e) { toast('Check failed', 'error'); }
+  btn.innerHTML = '<span>🔄</span> Check All';
+  btn.disabled = false;
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Delete this product?')) return;
+  await apiFetch(`/api/products/${id}`, { method: 'DELETE' });
+  await loadProducts();
+  toast('Product removed', 'success');
+}
+
+async function toggleProduct(id, active) {
+  await apiFetch(`/api/products/${id}`, { method: 'PUT', body: JSON.stringify({ active }) });
+  await loadProducts();
+}
+
+async function showHistory(id) {
+  const product = products.find(p => p.id === id);
+  const history = await apiFetch(`/api/products/${id}/history`);
+  if (!history.length) { toast('No price history yet', 'success'); return; }
+
+  const prices = history.map(h => h.price);
+  const min = Math.min(...prices), max = Math.max(...prices);
+  const range = max - min || 1;
+  const W = 400, H = 100, pad = 8;
+  const pts = prices.map((p, i) => {
+    const x = pad + (i / (prices.length - 1 || 1)) * (W - pad*2);
+    const y = H - pad - ((p - min) / range) * (H - pad*2);
+    return `${x},${y}`;
+  }).join(' ');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">📈 ${escHtml(product.name)}</div>
+      <div class="history-panel" style="border:none;padding:0">
+        <svg viewBox="0 0 ${W} ${H}" class="chart-svg">
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#00e5a0" stop-opacity=".3"/>
+              <stop offset="100%" stop-color="#00e5a0" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <polyline fill="none" stroke="#00e5a0" stroke-width="2" points="${pts}"/>
+        </svg>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);font-family:var(--mono);margin-top:8px">
+          <span>Min: €${min.toFixed(2)}</span>
+          <span>${history.length} data points</span>
+          <span>Max: €${max.toFixed(2)}</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Close</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'Add Product';
+  document.getElementById('modal-save-btn').textContent = 'Add Product';
+  document.getElementById('m-url').value = '';
+  document.getElementById('m-name').value = '';
+  document.getElementById('m-threshold').value = '5';
+  document.getElementById('product-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('product-modal').classList.remove('open');
+}
+
+async function saveProduct() {
+  const url = document.getElementById('m-url').value.trim();
+  const name = document.getElementById('m-name').value.trim();
+  const threshold_pct = parseFloat(document.getElementById('m-threshold').value) || 5;
+
+  if (!url) { toast('URL is required', 'error'); return; }
+
+  const btn = document.getElementById('modal-save-btn');
+  btn.innerHTML = '<span class="spinner"></span> Fetching…';
+  btn.disabled = true;
+
+  try {
+    await apiFetch('/api/products', {
+      method: 'POST',
+      body: JSON.stringify({ url, name, threshold_pct }),
+    });
+    closeModal();
+    await loadProducts();
+    toast('Product added!', 'success');
+  } catch(e) {
+    toast('Failed to add product', 'error');
+  }
+
+  btn.innerHTML = 'Add Product';
+  btn.disabled = false;
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const s = await apiFetch('/api/settings');
+    document.getElementById('s-slack').value       = s.slack_webhook || '';
+    document.getElementById('s-notify-email').value = s.notify_email || '';
+    document.getElementById('s-smtp-host').value   = s.smtp_host || '';
+    document.getElementById('s-smtp-port').value   = s.smtp_port || '587';
+    document.getElementById('s-smtp-user').value   = s.smtp_user || '';
+    document.getElementById('s-smtp-pass').value   = s.smtp_pass || '';
+    document.getElementById('s-pushbullet').value  = s.pushbullet_key || '';
+    document.getElementById('s-interval').value    = s.check_interval_minutes || '60';
+  } catch(e) { toast('Could not load settings', 'error'); }
+}
+
+async function saveSettings() {
+  await apiFetch('/api/settings', {
+    method: 'POST',
+    body: JSON.stringify({
+      slack_webhook:           document.getElementById('s-slack').value.trim(),
+      notify_email:            document.getElementById('s-notify-email').value.trim(),
+      smtp_host:               document.getElementById('s-smtp-host').value.trim(),
+      smtp_port:               document.getElementById('s-smtp-port').value.trim(),
+      smtp_user:               document.getElementById('s-smtp-user').value.trim(),
+      smtp_pass:               document.getElementById('s-smtp-pass').value.trim(),
+      pushbullet_key:          document.getElementById('s-pushbullet').value.trim(),
+      check_interval_minutes:  document.getElementById('s-interval').value.trim(),
+    }),
+  });
+  toast('Settings saved!', 'success');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = (type === 'success' ? '✓ ' : '✗ ') + msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modal on overlay click
+document.getElementById('product-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Init
+loadProducts();
+setInterval(loadProducts, 60000);
+</script>
+</body>
+</html>
