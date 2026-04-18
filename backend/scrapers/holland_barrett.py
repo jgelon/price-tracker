@@ -1,13 +1,19 @@
 """
 Scraper for hollandandbarrett.nl (and .com)
 
-H&B NL is a Next.js app — product data lives in <script id="__NEXT_DATA__">,
-NOT in standard JSON-LD or Open Graph meta tags.
+H&B NL is a Next.js / Bloomreach app. Product price lives inside
+<script id="__NEXT_DATA__"> — there is no JSON-LD and no OG price meta.
 
-Strategy:
-  1. __NEXT_DATA__ JSON blob  (primary — covers all H&B Next.js pages)
-  2. JSON-LD                  (fallback — older / variant pages)
-  3. H&B-specific CSS         (last resort)
+The exact JSON path has changed several times; we therefore try every known
+path AND fall back to a full recursive scan of the entire tree, looking for
+any key named 'nowPrice', 'salePrice', 'currentPrice', 'price', etc.
+
+Known __NEXT_DATA__ shapes (newest first):
+  props.pageProps.productDetails.prices.nowPrice.price    <- Bloomreach CMS
+  props.pageProps.productDetails.price
+  props.pageProps.product.price / salePrice / currentPrice
+  props.pageProps.productData.price
+  props.pageProps.initialState.*.price                    <- Redux store
 """
 
 import logging
@@ -16,6 +22,12 @@ import re
 from .base import BaseScraper, ScraperResult
 
 logger = logging.getLogger(__name__)
+
+# Keys whose value IS the current selling price (ordered specific → generic)
+_PRICE_KEYS = ("nowPrice", "salePrice", "currentPrice", "promotionPrice", "lowestPrice", "price")
+
+# Sub-tree keys that indicate "was / original" price — skip to avoid grabbing them
+_SKIP_KEYS = {"wasPrice", "originalPrice", "rrpPrice", "listPrice", "strikePrice"}
 
 
 class HollandBarrettScraper(BaseScraper):
@@ -30,135 +42,184 @@ class HollandBarrettScraper(BaseScraper):
         if soup is None:
             return ScraperResult(None, None, error="Failed to fetch page")
 
-        # --- Strategy 1: __NEXT_DATA__ (Next.js embedded JSON) ---
+        # Strategy 1: __NEXT_DATA__
         next_data = self._extract_next_data(soup)
         if next_data:
+            logger.debug("[holland_barrett] __NEXT_DATA__ found, parsing...")
             result = self._parse_next_data(next_data)
             if result.success:
-                logger.info(
-                    "[holland_barrett] __NEXT_DATA__ → price=%.2f name=%r",
-                    result.price, result.name,
-                )
+                logger.info("[holland_barrett] __NEXT_DATA__ -> price=%.2f name=%r", result.price, result.name)
                 return result
-            logger.debug("[holland_barrett] __NEXT_DATA__ present but no price extracted")
+            logger.warning("[holland_barrett] __NEXT_DATA__ present but no price found; falling back")
+        else:
+            logger.warning("[holland_barrett] No __NEXT_DATA__ in page — site may have changed")
 
-        # --- Strategy 2: JSON-LD ---
+        # Strategy 2: JSON-LD (older pages)
         price, name = self._extract_json_ld_price(soup)
         if price is not None:
-            logger.info("[holland_barrett] JSON-LD → price=%.2f name=%r", price, name)
+            logger.info("[holland_barrett] JSON-LD -> price=%.2f name=%r", price, name)
             return ScraperResult(price, name)
 
-        # --- Strategy 3: CSS selectors ---
-        name_tag = soup.select_one(
-            "h1.productName, h1[data-test='product-name'], h1.product__name, h1"
-        )
+        # Strategy 3: CSS selectors
+        name_tag = soup.select_one("h1.productName, h1[data-test='product-name'], h1.product__name, h1")
         name = name_tag.get_text(strip=True) if name_tag else None
-
-        price_tag = soup.select_one(
-            "[data-test='product-price'], "
-            "span.price, p.price, "
-            ".product-price__sale, .price--sale, .priceText"
-        )
-        if price_tag:
-            price = self._parse_price(price_tag.get_text(strip=True))
-            if price is not None:
-                logger.info("[holland_barrett] CSS → price=%.2f name=%r", price, name)
-                return ScraperResult(price, name)
+        for sel in ("[data-test='product-price']", "span[class*='price']", "p[class*='price']",
+                    ".product-price__sale", ".price--sale", ".priceText"):
+            tag = soup.select_one(sel)
+            if tag:
+                price = self._parse_price(tag.get_text(strip=True))
+                if price is not None:
+                    logger.info("[holland_barrett] CSS -> price=%.2f name=%r", price, name)
+                    return ScraperResult(price, name)
 
         logger.warning("[holland_barrett] All strategies failed for %s", url)
         return ScraperResult(None, name, error="Price element not found")
 
     # ------------------------------------------------------------------ #
-    #  __NEXT_DATA__ parsing                                               #
-    # ------------------------------------------------------------------ #
 
     def _parse_next_data(self, data: dict) -> ScraperResult:
-        """Walk __NEXT_DATA__ looking for product price + name."""
-        page_props = self._deep_find(data, "props", "pageProps") or {}
+        pp = self._deep_find(data, "props", "pageProps") or {}
 
-        # Try all known H&B NL page shapes
-        candidates = [
-            page_props.get("product"),
-            page_props.get("productData"),
-            self._deep_find(page_props, "initialData", "product"),
-            self._deep_find(page_props, "pdpData", "product"),
-            self._deep_find(page_props, "data", "product"),
+        # Named paths — tried in order, newest schema first
+        attempts = [
+            # Bloomreach / current schema
+            lambda: self._from_price_obj(
+                self._deep_find(pp, "productDetails", "prices", "nowPrice"),
+                self._deep_find(pp, "productDetails", "name")),
+            lambda: self._from_price_obj(
+                self._deep_find(pp, "productDetails", "prices", "salePrice"),
+                self._deep_find(pp, "productDetails", "name")),
+            lambda: self._scalar(
+                self._deep_find(pp, "productDetails", "price"),
+                self._deep_find(pp, "productDetails", "name")),
+            # Standard product nodes
+            lambda: self._from_product_node(pp.get("product")),
+            lambda: self._from_product_node(pp.get("productData")),
+            lambda: self._from_product_node(self._deep_find(pp, "pdpData", "product")),
+            lambda: self._from_product_node(self._deep_find(pp, "data", "product")),
+            lambda: self._from_product_node(self._deep_find(pp, "initialData", "product")),
+            lambda: self._from_product_node(self._deep_find(pp, "serverSideProps", "productData")),
         ]
 
-        for node in candidates:
-            if not isinstance(node, dict):
-                continue
-            result = self._extract_price_from_node(node)
-            if result.success:
-                return result
+        for attempt in attempts:
+            try:
+                result = attempt()
+                if result and result.success:
+                    return result
+            except Exception as exc:
+                logger.debug("[holland_barrett] named path error: %s", exc)
 
-        # Broad fallback: recursively scan the entire tree
-        price, name = self._recursive_find_price(data, depth=0)
+        # Full recursive scan — catches any future schema change
+        logger.debug("[holland_barrett] Starting full recursive tree scan")
+        price, name = self._recursive_scan(data, depth=0, name=None)
         if price is not None:
             return ScraperResult(price, name)
 
         return ScraperResult(None, None, error="No price in __NEXT_DATA__")
 
-    def _extract_price_from_node(self, node: dict) -> ScraperResult:
+    def _from_price_obj(self, node, name=None):
+        """Extract from a {price/amount/value: X} dict."""
+        if not isinstance(node, dict):
+            return None
+        for key in ("price", "amount", "value", "current"):
+            raw = node.get(key)
+            if raw is not None:
+                price = self._coerce(raw)
+                if price:
+                    return ScraperResult(price, name)
+        return None
+
+    def _scalar(self, raw, name=None):
+        if raw is None:
+            return None
+        price = self._coerce(raw)
+        return ScraperResult(price, name) if price else None
+
+    def _from_product_node(self, node):
+        if not isinstance(node, dict):
+            return None
         name = node.get("name") or node.get("title") or node.get("productName")
 
-        for field in ("price", "salePrice", "currentPrice", "lowestPrice", "promotionPrice"):
-            raw = node.get(field)
+        # Direct price fields
+        for key in _PRICE_KEYS:
+            raw = node.get(key)
             if raw is None:
                 continue
-            price = self._coerce_price(raw)
-            if price is not None:
-                logger.debug("[holland_barrett] node field=%r → price=%.2f", field, price)
-                return ScraperResult(price, name)
-
-        # Nested pricing object
-        pricing = node.get("pricing") or node.get("priceInfo") or node.get("prices")
-        if isinstance(pricing, dict):
-            for field in ("price", "salePrice", "value", "current", "finalPrice"):
-                raw = pricing.get(field)
-                if raw is None:
-                    continue
-                price = self._coerce_price(raw)
-                if price is not None:
+            if isinstance(raw, dict):
+                r = self._from_price_obj(raw, name)
+                if r and r.success:
+                    return r
+            else:
+                price = self._coerce(raw)
+                if price:
                     return ScraperResult(price, name)
 
-        return ScraperResult(None, name)
+        # Price container sub-objects
+        for ck in ("prices", "pricing", "priceInfo", "priceData"):
+            container = node.get(ck)
+            if not isinstance(container, dict):
+                continue
+            for pk in _PRICE_KEYS:
+                if pk in _SKIP_KEYS:
+                    continue
+                sub = container.get(pk)
+                if sub is None:
+                    continue
+                price = (self._coerce(sub) if not isinstance(sub, dict)
+                         else self._coerce(sub.get("price") or sub.get("amount") or sub.get("value")))
+                if price:
+                    return ScraperResult(price, name)
+        return None
 
-    def _recursive_find_price(
-        self, obj, depth: int, name: str | None = None
-    ) -> tuple[float | None, str | None]:
-        """Last-resort recursive search. Stops at depth 10."""
-        if depth > 10 or not obj:
+    def _recursive_scan(self, obj, depth: int, name=None):
+        """Walk full JSON tree. Skips _SKIP_KEYS sub-trees. Max depth 12."""
+        if depth > 12 or obj is None:
             return None, None
 
         if isinstance(obj, dict):
-            candidate_name = (
-                obj.get("name") or obj.get("title") or obj.get("productName") or name
-            )
-            for field in ("price", "salePrice", "currentPrice"):
-                raw = obj.get(field)
-                if raw is None:
+            candidate_name = obj.get("name") or obj.get("title") or obj.get("productName") or name
+
+            # Prioritise nowPrice / salePrice before generic 'price'
+            for pk in ("nowPrice", "salePrice", "currentPrice"):
+                sub = obj.get(pk)
+                if sub is None:
                     continue
-                price = self._coerce_price(raw)
-                if price is not None and 0.01 < price < 10_000:
+                if isinstance(sub, dict):
+                    r = self._from_price_obj(sub, candidate_name)
+                    if r and r.success:
+                        return r.price, r.name or candidate_name
+                else:
+                    price = self._coerce(sub)
+                    if price and 0.01 < price < 10_000:
+                        return price, candidate_name
+
+            # Generic 'price' key (not a dict/list)
+            raw = obj.get("price")
+            if raw is not None and not isinstance(raw, (dict, list)):
+                price = self._coerce(raw)
+                if price and 0.01 < price < 10_000:
                     return price, candidate_name
-            for value in obj.values():
-                price, found_name = self._recursive_find_price(
-                    value, depth + 1, candidate_name
-                )
-                if price is not None:
-                    return price, found_name or candidate_name
+
+            # Recurse, skipping "was price" sub-trees
+            for key, value in obj.items():
+                if key in _SKIP_KEYS:
+                    continue
+                p, n = self._recursive_scan(value, depth + 1, candidate_name)
+                if p is not None:
+                    return p, n or candidate_name
 
         elif isinstance(obj, list):
-            for item in obj[:20]:
-                price, found_name = self._recursive_find_price(item, depth + 1, name)
-                if price is not None:
-                    return price, found_name
+            for item in obj[:30]:
+                p, n = self._recursive_scan(item, depth + 1, name)
+                if p is not None:
+                    return p, n
 
         return None, None
 
     @staticmethod
-    def _coerce_price(raw) -> float | None:
+    def _coerce(raw):
+        if isinstance(raw, bool):
+            return None
         if isinstance(raw, (int, float)):
             v = float(raw)
             return v if v > 0 else None

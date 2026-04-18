@@ -3,15 +3,16 @@ PriceWatch – Flask backend
 ==========================
 Routes
 ------
-  GET    /api/products              list all products (with current + previous price)
-  POST   /api/products              add a new product
-  GET    /api/products/<id>         get single product + full price history
-  PUT    /api/products/<id>         update name / threshold / active
-  DELETE /api/products/<id>         remove product + history
-  POST   /api/products/<id>/check   force-check one product
-  POST   /api/check-all             force-check all active products
-  GET    /api/settings              read settings
-  POST   /api/settings              save settings
+  GET    /api/products                list all products
+  POST   /api/products                add a new product
+  GET    /api/products/<id>           get single product + price history
+  PUT    /api/products/<id>           update name / threshold / active / manual price
+  DELETE /api/products/<id>           remove product + history
+  POST   /api/products/<id>/check     force-check one product
+  POST   /api/check-all               force-check all active products
+  GET    /api/settings                read settings
+  POST   /api/settings                save settings
+  GET    /api/logs                    recent scrape log entries (frontend log viewer)
 """
 
 import logging
@@ -27,8 +28,7 @@ from flask_cors import CORS
 from scrapers import scrape_url
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Logging — structured, levelled, stdout (Docker-friendly)
-# Set LOG_LEVEL env var to DEBUG for verbose scraper output.
+# Logging
 # ─────────────────────────────────────────────────────────────────────────────
 
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -66,9 +66,7 @@ DB_PATH = os.environ.get("DB_PATH", "/data/pricewatch.db")
 
 
 def get_db() -> sqlite3.Connection:
-    """Return a per-request SQLite connection stored on Flask's g object."""
     if "db" not in g:
-        logger.debug("Opening DB connection to %s", DB_PATH)
         g.db = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA journal_mode=WAL")
@@ -81,13 +79,11 @@ def close_db(exc=None):
     db = g.pop("db", None)
     if db is not None:
         if exc:
-            logger.warning("Closing DB after request error: %s", exc)
             db.rollback()
         db.close()
 
 
 def init_db():
-    """Create tables if they don't already exist."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("PRAGMA journal_mode=WAL")
@@ -114,9 +110,45 @@ def init_db():
                 key   TEXT PRIMARY KEY,
                 value TEXT
             );
+
+            CREATE TABLE IF NOT EXISTS scrape_logs (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id  INTEGER REFERENCES products(id) ON DELETE SET NULL,
+                product_url TEXT,
+                scraper     TEXT,
+                level       TEXT    NOT NULL DEFAULT 'INFO',
+                message     TEXT    NOT NULL,
+                logged_at   TEXT    NOT NULL
+            );
         """)
         conn.commit()
     logger.info("Database initialised at %s", DB_PATH)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DB log writer — persists scrape events so the frontend can display them
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _log(level: str, message: str, product_id=None, product_url=None, scraper=None):
+    """Write a log entry to the scrape_logs table AND to Python logging."""
+    getattr(logger, level.lower(), logger.info)(message)
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute(
+                "INSERT INTO scrape_logs (product_id, product_url, scraper, level, message, logged_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (product_id, product_url, scraper, level.upper(), message, _now_iso()),
+            )
+            conn.commit()
+        # Keep last 500 entries
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute(
+                "DELETE FROM scrape_logs WHERE id NOT IN "
+                "(SELECT id FROM scrape_logs ORDER BY id DESC LIMIT 500)"
+            )
+            conn.commit()
+    except Exception as exc:
+        logger.warning("Failed to write to scrape_logs: %s", exc)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -140,42 +172,37 @@ def _save_setting(key: str, value: str):
         "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         (key, value),
     )
-    # Note: caller is responsible for commit
 
 
 def _check_product(product_id: int) -> dict:
-    """
-    Fetch current price for a product, persist to price_history,
-    fire alerts if warranted, and return a status dict.
-    """
     db = get_db()
     product = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
 
     if not product:
-        logger.error("_check_product: product id=%s not found", product_id)
         return {"error": "Product not found"}
 
     url = product["url"]
-    logger.info("Checking product id=%s url=%s", product_id, url)
+    _log("INFO", f"Starting price check for: {url}", product_id=product_id, product_url=url)
 
     result = scrape_url(url)
     now = _now_iso()
 
     if not result.success:
-        logger.warning(
-            "Price check failed for product id=%s url=%s error=%r",
-            product_id, url, result.error,
-        )
+        _log("ERROR",
+             f"Price check failed — {result.error}",
+             product_id=product_id, product_url=url,
+             scraper=result.error)
         db.execute("UPDATE products SET last_checked = ? WHERE id = ?", (now, product_id))
         db.commit()
         return {"product_id": product_id, "error": result.error, "checked_at": now}
 
     price = result.price
+    scraper_used = getattr(result, "scraper_name", "unknown")
 
-    # Update name if scraper found one and we don't have one yet
     if result.name and not product["name"]:
         db.execute("UPDATE products SET name = ? WHERE id = ?", (result.name, product_id))
-        logger.info("Updated name for product id=%s → %r", product_id, result.name)
+        _log("INFO", f"Name auto-detected: {result.name!r}",
+             product_id=product_id, product_url=url)
 
     db.execute(
         "INSERT INTO price_history (product_id, price, checked_at) VALUES (?, ?, ?)",
@@ -184,7 +211,7 @@ def _check_product(product_id: int) -> dict:
     db.execute("UPDATE products SET last_checked = ? WHERE id = ?", (now, product_id))
     db.commit()
 
-    logger.info("Price recorded: product id=%s price=%.2f url=%s", product_id, price, url)
+    _log("INFO", f"Price recorded: €{price:.2f}", product_id=product_id, product_url=url)
 
     # Alert logic
     threshold = product["threshold"] or 0
@@ -198,17 +225,15 @@ def _check_product(product_id: int) -> dict:
             if previous_price > 0:
                 pct_drop = (previous_price - price) / previous_price * 100
                 if pct_drop >= threshold:
-                    logger.info(
-                        "Alert triggered: product id=%s drop=%.1f%% threshold=%.1f%%",
-                        product_id, pct_drop, threshold,
-                    )
+                    _log("INFO",
+                         f"Alert triggered! Drop {pct_drop:.1f}% >= threshold {threshold:.1f}%",
+                         product_id=product_id, product_url=url)
                     _send_alerts(product, price, previous_price, pct_drop)
 
     return {"product_id": product_id, "price": price, "name": result.name, "checked_at": now}
 
 
-def _send_alerts(product, current_price: float, previous_price: float, pct_drop: float):
-    """Fire all configured notification channels."""
+def _send_alerts(product, current_price, previous_price, pct_drop):
     import smtplib
     from email.mime.text import MIMEText
 
@@ -220,53 +245,45 @@ def _send_alerts(product, current_price: float, previous_price: float, pct_drop:
         f"Was: €{previous_price:.2f}  →  Now: €{current_price:.2f} ({pct_drop:.1f}% off)"
     )
 
-    # Slack
     slack_url = _get_setting("slack_webhook")
     if slack_url:
         try:
             import requests as req_lib
-            resp = req_lib.post(slack_url, json={"text": message}, timeout=10)
-            resp.raise_for_status()
-            logger.info("Slack alert sent for product id=%s", product["id"])
+            req_lib.post(slack_url, json={"text": message}, timeout=10).raise_for_status()
+            _log("INFO", "Slack alert sent", product_id=product["id"])
         except Exception as exc:
-            logger.warning("Slack alert failed for product id=%s: %s", product["id"], exc)
+            _log("ERROR", f"Slack alert failed: {exc}", product_id=product["id"])
 
-    # Email
     smtp_host = _get_setting("smtp_host")
-    smtp_port = _get_setting("smtp_port", "587")
     smtp_user = _get_setting("smtp_user")
-    smtp_pass = _get_setting("smtp_pass")
     notify_email = _get_setting("notify_email")
-
     if smtp_host and smtp_user and notify_email:
         try:
             msg = MIMEText(message)
             msg["Subject"] = f"[PriceWatch] Price drop: {name}"
             msg["From"] = smtp_user
             msg["To"] = notify_email
-            with smtplib.SMTP(smtp_host, int(smtp_port)) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(smtp_user, notify_email, msg.as_string())
-            logger.info("Email alert sent for product id=%s to %s", product["id"], notify_email)
+            with smtplib.SMTP(smtp_host, int(_get_setting("smtp_port", "587"))) as s:
+                s.starttls()
+                s.login(smtp_user, _get_setting("smtp_pass"))
+                s.sendmail(smtp_user, notify_email, msg.as_string())
+            _log("INFO", f"Email alert sent to {notify_email}", product_id=product["id"])
         except Exception as exc:
-            logger.warning("Email alert failed for product id=%s: %s", product["id"], exc)
+            _log("ERROR", f"Email alert failed: {exc}", product_id=product["id"])
 
-    # Pushbullet
     pb_key = _get_setting("pushbullet_key")
     if pb_key:
         try:
             import requests as req_lib
-            resp = req_lib.post(
+            req_lib.post(
                 "https://api.pushbullet.com/v2/pushes",
                 headers={"Access-Token": pb_key},
                 json={"type": "note", "title": f"PriceWatch: {name}", "body": message},
                 timeout=10,
-            )
-            resp.raise_for_status()
-            logger.info("Pushbullet alert sent for product id=%s", product["id"])
+            ).raise_for_status()
+            _log("INFO", "Pushbullet alert sent", product_id=product["id"])
         except Exception as exc:
-            logger.warning("Pushbullet alert failed for product id=%s: %s", product["id"], exc)
+            _log("ERROR", f"Pushbullet alert failed: {exc}", product_id=product["id"])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -275,96 +292,72 @@ def _send_alerts(product, current_price: float, previous_price: float, pct_drop:
 
 @app.route("/api/products", methods=["GET"])
 def list_products():
-    logger.debug("GET /api/products")
     db = get_db()
     rows = db.execute("SELECT * FROM products ORDER BY id DESC").fetchall()
     products = []
     for row in rows:
         p = dict(row)
-
-        # Latest price — always a float or explicit null, never undefined
         latest = db.execute(
-            "SELECT price, checked_at FROM price_history "
-            "WHERE product_id = ? ORDER BY id DESC LIMIT 1",
+            "SELECT price, checked_at FROM price_history WHERE product_id = ? ORDER BY id DESC LIMIT 1",
             (p["id"],),
         ).fetchone()
         p["current_price"] = round(latest["price"], 2) if latest else None
         p["last_price_at"] = latest["checked_at"] if latest else None
 
-        # Previous price — used by the frontend for the strikethrough / trend
         prev = db.execute(
-            "SELECT price FROM price_history "
-            "WHERE product_id = ? ORDER BY id DESC LIMIT 1 OFFSET 1",
+            "SELECT price FROM price_history WHERE product_id = ? ORDER BY id DESC LIMIT 1 OFFSET 1",
             (p["id"],),
         ).fetchone()
         p["previous_price"] = round(prev["price"], 2) if prev else None
 
-        # Guarantee name is always a non-empty string so the frontend never
-        # shows "undefined" while waiting for the first scrape.
+        # Latest scrape error for this product (if last check failed)
+        last_err = db.execute(
+            "SELECT message, logged_at FROM scrape_logs "
+            "WHERE product_id = ? AND level = 'ERROR' ORDER BY id DESC LIMIT 1",
+            (p["id"],),
+        ).fetchone()
+        p["last_error"] = last_err["message"] if last_err else None
+
         if not p.get("name"):
             p["name"] = p["url"]
-
         products.append(p)
-
-    logger.debug("Returning %d products", len(products))
     return jsonify(products)
 
 
 @app.route("/api/products", methods=["POST"])
 def add_product():
-    """
-    Add a new product and immediately check its price.
-
-    FIX: The original code was missing db.commit() after the INSERT, so the
-    row was held in an uncommitted transaction that was rolled back at request
-    end — the product was never actually saved.  Fixed by:
-      1. Validating input before touching the DB.
-      2. Calling db.commit() immediately after the INSERT.
-      3. Rolling back explicitly on any error and returning a proper error response.
-      4. Logging every failure so it shows up in container logs.
-    """
     data = request.get_json(silent=True) or {}
     url = (data.get("url") or "").strip()
-    logger.info("POST /api/products url=%r", url)
-
     if not url:
-        logger.warning("add_product: missing url in request body")
         return jsonify({"error": "url is required"}), 400
 
     threshold = float(data.get("threshold", 0) or 0)
     name = (data.get("name") or "").strip() or None
     now = _now_iso()
-
     db = get_db()
 
-    # Reject duplicates early with a clear message
     existing = db.execute("SELECT id FROM products WHERE url = ?", (url,)).fetchone()
     if existing:
-        logger.warning("add_product: duplicate url %r (existing id=%s)", url, existing["id"])
         return jsonify({"error": "Product with this URL already exists", "id": existing["id"]}), 409
 
     try:
         cursor = db.execute(
-            "INSERT INTO products (url, name, threshold, active, created_at) "
-            "VALUES (?, ?, ?, 1, ?)",
+            "INSERT INTO products (url, name, threshold, active, created_at) VALUES (?, ?, ?, 1, ?)",
             (url, name, threshold, now),
         )
         product_id = cursor.lastrowid
-        db.commit()  # ← THE CRITICAL FIX
-        logger.info("Inserted product id=%s url=%r", product_id, url)
+        db.commit()
+        _log("INFO", f"Product added: {url}", product_id=product_id, product_url=url)
     except sqlite3.IntegrityError as exc:
         db.rollback()
-        logger.error("IntegrityError inserting product url=%r: %s", url, exc)
         return jsonify({"error": "Database integrity error", "detail": str(exc)}), 409
     except sqlite3.Error as exc:
         db.rollback()
-        logger.exception("DB error inserting product url=%r", url)
+        logger.exception("DB error inserting product")
         return jsonify({"error": "Database error", "detail": str(exc)}), 500
 
-    # Immediate first price check (best-effort — don't fail the whole response)
     try:
         check_result = _check_product(product_id)
-        logger.info("Initial price check for product id=%s: %s", product_id, check_result)
     except Exception as exc:
         logger.exception("Initial price check failed for product id=%s", product_id)
         check_result = {"error": str(exc)}
@@ -377,18 +370,14 @@ def add_product():
 
 @app.route("/api/products/<int:product_id>", methods=["GET"])
 def get_product(product_id):
-    logger.debug("GET /api/products/%s", product_id)
     db = get_db()
     product = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
     if not product:
-        logger.warning("get_product: id=%s not found", product_id)
         return jsonify({"error": "Not found"}), 404
-
     history = db.execute(
         "SELECT price, checked_at FROM price_history WHERE product_id = ? ORDER BY id ASC",
         (product_id,),
     ).fetchall()
-
     result = dict(product)
     result["price_history"] = [dict(h) for h in history]
     return jsonify(result)
@@ -397,11 +386,25 @@ def get_product(product_id):
 @app.route("/api/products/<int:product_id>", methods=["PUT"])
 def update_product(product_id):
     data = request.get_json(silent=True) or {}
-    logger.info("PUT /api/products/%s data=%r", product_id, data)
     db = get_db()
 
     if not db.execute("SELECT id FROM products WHERE id = ?", (product_id,)).fetchone():
         return jsonify({"error": "Not found"}), 404
+
+    # Handle manual price override — inserts into price_history
+    manual_price = data.pop("manual_price", None)
+    if manual_price is not None:
+        try:
+            price_val = float(manual_price)
+            now = _now_iso()
+            db.execute(
+                "INSERT INTO price_history (product_id, price, checked_at) VALUES (?, ?, ?)",
+                (product_id, price_val, now),
+            )
+            db.execute("UPDATE products SET last_checked = ? WHERE id = ?", (now, product_id))
+            _log("INFO", f"Manual price set: €{price_val:.2f}", product_id=product_id)
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid manual_price value"}), 400
 
     fields, values = [], []
     for col in ("name", "threshold", "active"):
@@ -409,17 +412,19 @@ def update_product(product_id):
             fields.append(f"{col} = ?")
             values.append(data[col])
 
-    if not fields:
-        return jsonify({"error": "No updatable fields provided"}), 400
+    if fields:
+        values.append(product_id)
+        try:
+            db.execute(f"UPDATE products SET {', '.join(fields)} WHERE id = ?", values)
+        except sqlite3.Error as exc:
+            db.rollback()
+            return jsonify({"error": "Database error", "detail": str(exc)}), 500
 
-    values.append(product_id)
     try:
-        db.execute(f"UPDATE products SET {', '.join(fields)} WHERE id = ?", values)
         db.commit()
-        logger.info("Updated product id=%s fields=%s", product_id, fields)
+        logger.info("Updated product id=%s", product_id)
     except sqlite3.Error as exc:
         db.rollback()
-        logger.exception("DB error updating product id=%s", product_id)
         return jsonify({"error": "Database error", "detail": str(exc)}), 500
 
     updated = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
@@ -428,24 +433,20 @@ def update_product(product_id):
 
 @app.route("/api/products/<int:product_id>", methods=["DELETE"])
 def delete_product(product_id):
-    logger.info("DELETE /api/products/%s", product_id)
     db = get_db()
     if not db.execute("SELECT id FROM products WHERE id = ?", (product_id,)).fetchone():
         return jsonify({"error": "Not found"}), 404
     try:
         db.execute("DELETE FROM products WHERE id = ?", (product_id,))
         db.commit()
-        logger.info("Deleted product id=%s", product_id)
     except sqlite3.Error as exc:
         db.rollback()
-        logger.exception("DB error deleting product id=%s", product_id)
         return jsonify({"error": "Database error", "detail": str(exc)}), 500
     return jsonify({"deleted": product_id})
 
 
 @app.route("/api/products/<int:product_id>/check", methods=["POST"])
 def check_product(product_id):
-    logger.info("POST /api/products/%s/check", product_id)
     result = _check_product(product_id)
     if "error" in result and result["error"] == "Product not found":
         return jsonify(result), 404
@@ -454,13 +455,48 @@ def check_product(product_id):
 
 @app.route("/api/check-all", methods=["POST"])
 def check_all():
-    logger.info("POST /api/check-all – manual trigger")
+    _log("INFO", "Manual check-all triggered")
     db = get_db()
-    rows = db.execute("SELECT id FROM products WHERE active = 1").fetchall()
-    ids = [r["id"] for r in rows]
-    logger.info("Checking %d active products", len(ids))
+    ids = [r["id"] for r in db.execute("SELECT id FROM products WHERE active = 1").fetchall()]
     results = [_check_product(pid) for pid in ids]
     return jsonify({"checked": len(results), "results": results})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Routes – Logs
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/logs", methods=["GET"])
+def get_logs():
+    """Return recent scrape log entries for display in the frontend."""
+    limit = min(int(request.args.get("limit", 100)), 500)
+    product_id = request.args.get("product_id")
+    db = get_db()
+
+    if product_id:
+        rows = db.execute(
+            "SELECT l.*, p.name as product_name FROM scrape_logs l "
+            "LEFT JOIN products p ON p.id = l.product_id "
+            "WHERE l.product_id = ? ORDER BY l.id DESC LIMIT ?",
+            (product_id, limit),
+        ).fetchall()
+    else:
+        rows = db.execute(
+            "SELECT l.*, p.name as product_name FROM scrape_logs l "
+            "LEFT JOIN products p ON p.id = l.product_id "
+            "ORDER BY l.id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/logs", methods=["DELETE"])
+def clear_logs():
+    db = get_db()
+    db.execute("DELETE FROM scrape_logs")
+    db.commit()
+    return jsonify({"cleared": True})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -477,7 +513,6 @@ SETTING_KEYS = [
 
 @app.route("/api/settings", methods=["GET"])
 def get_settings():
-    logger.debug("GET /api/settings")
     with app.app_context():
         return jsonify({k: _get_setting(k) for k in SETTING_KEYS})
 
@@ -485,7 +520,6 @@ def get_settings():
 @app.route("/api/settings", methods=["POST"])
 def save_settings():
     data = request.get_json(silent=True) or {}
-    logger.info("POST /api/settings keys=%s", list(data.keys()))
     db = get_db()
     try:
         for key in SETTING_KEYS:
@@ -494,16 +528,13 @@ def save_settings():
         db.commit()
     except sqlite3.Error as exc:
         db.rollback()
-        logger.exception("DB error saving settings")
         return jsonify({"error": "Database error", "detail": str(exc)}), 500
 
     if "check_interval" in data:
         try:
-            interval = max(5, int(data["check_interval"]))
-            _reschedule(interval)
-            logger.info("Check interval updated to %d minutes", interval)
-        except (ValueError, TypeError) as exc:
-            logger.warning("Invalid check_interval %r: %s", data.get("check_interval"), exc)
+            _reschedule(max(5, int(data["check_interval"])))
+        except (ValueError, TypeError):
+            pass
 
     return jsonify({"saved": True})
 
@@ -516,12 +547,10 @@ scheduler = BackgroundScheduler(daemon=True)
 
 
 def _scheduled_check_all():
-    logger.info("Scheduled price check triggered")
+    _log("INFO", "Scheduled price check started")
     with app.app_context():
         db = get_db()
-        rows = db.execute("SELECT id FROM products WHERE active = 1").fetchall()
-        ids = [r["id"] for r in rows]
-        logger.info("Scheduled check: %d active products", len(ids))
+        ids = [r["id"] for r in db.execute("SELECT id FROM products WHERE active = 1").fetchall()]
         for pid in ids:
             try:
                 _check_product(pid)
@@ -533,13 +562,8 @@ def _scheduled_check_all():
 def _reschedule(interval_minutes: int):
     if scheduler.get_job("price_check"):
         scheduler.remove_job("price_check")
-    scheduler.add_job(
-        _scheduled_check_all,
-        "interval",
-        minutes=interval_minutes,
-        id="price_check",
-        replace_existing=True,
-    )
+    scheduler.add_job(_scheduled_check_all, "interval", minutes=interval_minutes,
+                      id="price_check", replace_existing=True)
     logger.info("Scheduler set to every %d minutes", interval_minutes)
 
 
@@ -549,15 +573,11 @@ def _reschedule(interval_minutes: int):
 
 if __name__ == "__main__":
     init_db()
-
     with app.app_context():
         interval = int(_get_setting("check_interval", "60") or 60)
-
     _reschedule(interval)
     scheduler.start()
-    logger.info("APScheduler started with interval=%d minutes", interval)
-
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
-    logger.info("Flask listening on 0.0.0.0:%d (debug=%s)", port, debug)
+    logger.info("Flask listening on 0.0.0.0:%d", port)
     app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=False)

@@ -8,90 +8,36 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg: #0d0f14;
-      --surface: #151820;
-      --surface2: #1c2030;
-      --border: #252a3a;
-      --accent: #00e5a0;
-      --accent-dim: rgba(0,229,160,.12);
-      --red: #ff5470;
-      --red-dim: rgba(255,84,112,.12);
-      --yellow: #ffd166;
-      --text: #e8eaf2;
-      --text-muted: #6b7294;
-      --text-dim: #9198b8;
-      --radius: 12px;
-      --mono: 'DM Mono', monospace;
-      --sans: 'Syne', sans-serif;
+      --bg: #0d0f14; --surface: #151820; --surface2: #1c2030; --border: #252a3a;
+      --accent: #00e5a0; --accent-dim: rgba(0,229,160,.12);
+      --red: #ff5470; --red-dim: rgba(255,84,112,.12);
+      --yellow: #ffd166; --yellow-dim: rgba(255,209,102,.12);
+      --blue: #5b9cf6; --blue-dim: rgba(91,156,246,.12);
+      --text: #e8eaf2; --text-muted: #6b7294; --text-dim: #9198b8;
+      --radius: 12px; --mono: 'DM Mono', monospace; --sans: 'Syne', sans-serif;
       --mob-nav-h: 60px;
     }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; display: flex; }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--sans);
-      min-height: 100vh;
-      display: flex;
-    }
-
-    /* ══════════════════════════════════════
-       SIDEBAR  (desktop only)
-    ══════════════════════════════════════ */
-    .sidebar {
-      width: 220px;
-      min-height: 100vh;
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      padding: 28px 0;
-      position: sticky;
-      top: 0;
-      height: 100vh;
-      flex-shrink: 0;
-    }
+    /* ── Sidebar ── */
+    .sidebar { width: 220px; min-height: 100vh; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 28px 0; position: sticky; top: 0; height: 100vh; flex-shrink: 0; }
     .logo { padding: 0 24px 32px; font-size: 22px; font-weight: 800; letter-spacing: -.5px; color: var(--accent); }
     .logo span { color: var(--text); }
-    .nav-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 24px; font-size: 14px; font-weight: 600;
-      color: var(--text-muted); cursor: pointer;
-      transition: all .15s; border-left: 3px solid transparent;
-      user-select: none; -webkit-tap-highlight-color: transparent;
-    }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 24px; font-size: 14px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all .15s; border-left: 3px solid transparent; user-select: none; -webkit-tap-highlight-color: transparent; }
     .nav-item:hover { color: var(--text); background: var(--surface2); }
     .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-dim); }
     .nav-icon { font-size: 18px; width: 22px; text-align: center; }
 
-    /* ══════════════════════════════════════
-       MAIN SHELL
-    ══════════════════════════════════════ */
+    /* ── Main ── */
     .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-
-    .topbar {
-      height: 64px; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 32px; background: var(--surface);
-      position: sticky; top: 0; z-index: 40; gap: 12px;
-    }
+    .topbar { height: 64px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; background: var(--surface); position: sticky; top: 0; z-index: 40; gap: 12px; }
     .topbar-title { font-size: 18px; font-weight: 700; }
     .topbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .content { padding: 28px; flex: 1; overflow-y: auto; }
 
-    .content { padding: 32px; flex: 1; overflow-y: auto; }
-
-    /* ══════════════════════════════════════
-       BUTTONS
-    ══════════════════════════════════════ */
-    .btn {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 9px 18px; border-radius: 8px;
-      font-family: var(--sans); font-size: 13px; font-weight: 600;
-      cursor: pointer; border: none; transition: all .15s;
-      white-space: nowrap; user-select: none;
-      -webkit-tap-highlight-color: transparent;
-    }
+    /* ── Buttons ── */
+    .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 8px; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; white-space: nowrap; user-select: none; -webkit-tap-highlight-color: transparent; }
     .btn:active { transform: scale(.97); }
     .btn-primary { background: var(--accent); color: #0d0f14; }
     .btn-primary:hover { filter: brightness(1.1); }
@@ -99,329 +45,184 @@
     .btn-ghost:hover { background: var(--surface2); color: var(--text); }
     .btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,84,112,.2); }
     .btn-danger:hover { background: rgba(255,84,112,.25); }
+    .btn-warn { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(255,209,102,.2); }
     .btn-sm { padding: 6px 12px; font-size: 12px; }
 
-    /* ══════════════════════════════════════
-       STATS ROW
-    ══════════════════════════════════════ */
+    /* ── Stats ── */
     .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 28px; }
     .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
     .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
     .stat-value { font-size: 32px; font-weight: 800; margin-top: 6px; color: var(--text); line-height: 1; }
     .stat-value.green { color: var(--accent); }
-    .stat-value.red { color: var(--red); }
 
-    /* ══════════════════════════════════════
-       PRODUCT CARDS
-    ══════════════════════════════════════ */
+    /* ── Product cards ── */
     .products-grid { display: flex; flex-direction: column; gap: 12px; }
-
-    .product-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 20px 24px;
-      display: grid; grid-template-columns: 56px 1fr auto;
-      gap: 16px; align-items: center; transition: border-color .15s;
-    }
+    .product-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; display: grid; grid-template-columns: 52px 1fr auto; gap: 16px; align-items: center; transition: border-color .15s; }
     .product-card:hover { border-color: rgba(255,255,255,.12); }
     .product-card.has-discount { border-left: 3px solid var(--accent); }
-
-    .product-img {
-      width: 56px; height: 56px; border-radius: 8px;
-      background: var(--surface2);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 24px; overflow: hidden; flex-shrink: 0;
-    }
+    .product-card.has-error { border-left: 3px solid var(--red); }
+    .product-img { width: 52px; height: 52px; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 22px; overflow: hidden; flex-shrink: 0; }
     .product-img img { width: 100%; height: 100%; object-fit: contain; }
-
     .product-info { min-width: 0; }
     .product-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .product-url { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; font-family: var(--mono); }
-    .product-meta { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
-
+    .product-meta { display: flex; align-items: center; gap: 8px; margin-top: 7px; flex-wrap: wrap; }
+    .product-error { font-size: 11px; color: var(--red); margin-top: 4px; display: flex; align-items: center; gap: 5px; }
     .badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; font-family: var(--mono); }
     .badge-green { background: var(--accent-dim); color: var(--accent); }
     .badge-muted { background: var(--surface2); color: var(--text-muted); }
     .badge-red { background: var(--red-dim); color: var(--red); }
-
-    .product-price { text-align: right; flex-shrink: 0; }
+    .product-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+    .product-price { text-align: right; }
     .price-current { font-size: 22px; font-weight: 800; font-family: var(--mono); }
     .price-original { font-size: 13px; color: var(--text-muted); text-decoration: line-through; font-family: var(--mono); }
     .price-discount { font-size: 13px; font-weight: 700; color: var(--accent); }
-    .product-actions { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; flex-wrap: wrap; }
+    .product-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
-    /* ══════════════════════════════════════
-       MODAL  (centre on desktop, bottom-sheet on mobile)
-    ══════════════════════════════════════ */
-    .modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.65); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 100; padding: 16px;
-      opacity: 0; pointer-events: none; transition: opacity .2s;
-    }
+    /* ── Dot ── */
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .dot-green { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .dot-muted { background: var(--text-muted); }
+    .dot-red { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+    /* ── Modal ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; opacity: 0; pointer-events: none; transition: opacity .2s; }
     .modal-overlay.open { opacity: 1; pointer-events: all; }
-
-    .modal {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 16px; padding: 32px;
-      width: 480px; max-width: 100%; max-height: 90vh; overflow-y: auto;
-      transform: translateY(16px);
-      transition: transform .25s cubic-bezier(.32,.72,0,1);
-    }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; width: 520px; max-width: 100%; max-height: 90vh; overflow-y: auto; transform: translateY(16px); transition: transform .25s cubic-bezier(.32,.72,0,1); }
     .modal-overlay.open .modal { transform: translateY(0); }
-
-    /* drag handle — shown only on mobile */
     .modal-handle { display: none; width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
-
-    .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 24px; }
-
-    .form-group { margin-bottom: 18px; }
-    .form-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); margin-bottom: 7px; display: block; }
-    .form-input, .form-select {
-      width: 100%; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 11px 14px; color: var(--text);
-      font-family: var(--sans);
-      font-size: 16px; /* 16 px prevents iOS auto-zoom on focus */
-      outline: none; transition: border-color .15s; -webkit-appearance: none;
-    }
+    .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+    .modal-subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 24px; font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); margin-bottom: 6px; display: block; }
+    .form-input, .form-select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; color: var(--text); font-family: var(--sans); font-size: 16px; outline: none; transition: border-color .15s; -webkit-appearance: none; }
     .form-input:focus, .form-select:focus { border-color: var(--accent); }
+    .form-input:disabled { opacity: .45; cursor: not-allowed; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .form-hint { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
-
+    .form-divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
     .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
 
-    /* ══════════════════════════════════════
-       SETTINGS
-    ══════════════════════════════════════ */
+    /* ── Settings ── */
     .settings-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
     .settings-section-title { font-size: 14px; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
 
-    /* ══════════════════════════════════════
-       HISTORY CHART
-    ══════════════════════════════════════ */
-    .history-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
-    .history-title { font-size: 14px; font-weight: 700; margin-bottom: 18px; }
-    .chart-container { position: relative; height: 160px; }
-    .chart-svg { width: 100%; height: 100%; }
+    /* ── Logs panel ── */
+    .logs-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+    .logs-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+    .log-filter-btn { padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: var(--sans); transition: all .15s; }
+    .log-filter-btn.active { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+    .logs-table { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .log-row { display: grid; grid-template-columns: 140px 60px 1fr; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); align-items: start; font-size: 12px; }
+    .log-row:last-child { border-bottom: none; }
+    .log-row:hover { background: var(--surface2); }
+    .log-time { color: var(--text-muted); font-family: var(--mono); white-space: nowrap; }
+    .log-level { font-weight: 700; font-family: var(--mono); font-size: 11px; }
+    .log-level.INFO  { color: var(--accent); }
+    .log-level.ERROR { color: var(--red); }
+    .log-level.WARNING { color: var(--yellow); }
+    .log-level.DEBUG { color: var(--text-muted); }
+    .log-message { color: var(--text-dim); line-height: 1.4; word-break: break-word; }
+    .log-product { font-size: 10px; color: var(--text-muted); font-family: var(--mono); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .logs-empty { padding: 48px 24px; text-align: center; color: var(--text-muted); font-size: 14px; }
+    .logs-auto-badge { font-size: 10px; background: var(--accent-dim); color: var(--accent); border-radius: 10px; padding: 2px 8px; font-family: var(--mono); }
 
-    /* ══════════════════════════════════════
-       EMPTY STATE
-    ══════════════════════════════════════ */
+    /* ── Empty state ── */
     .empty { text-align: center; padding: 80px 24px; }
     .empty-icon { font-size: 48px; margin-bottom: 16px; }
     .empty-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
     .empty-desc { color: var(--text-muted); font-size: 14px; line-height: 1.6; }
 
-    /* ══════════════════════════════════════
-       TOAST
-    ══════════════════════════════════════ */
+    /* ── Toast ── */
     .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 200; display: flex; flex-direction: column; gap: 8px; max-width: calc(100vw - 48px); }
-    .toast {
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 10px; padding: 12px 18px;
-      font-size: 13px; font-weight: 600;
-      animation: slideIn .25s ease;
-      display: flex; align-items: center; gap: 8px;
-    }
+    .toast { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; font-size: 13px; font-weight: 600; animation: slideIn .25s ease; display: flex; align-items: center; gap: 8px; }
     .toast.success { border-color: var(--accent); color: var(--accent); }
     .toast.error { border-color: var(--red); color: var(--red); }
     @keyframes slideIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-    /* ══════════════════════════════════════
-       MISC
-    ══════════════════════════════════════ */
-    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-    .dot-green { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
-    .dot-muted { background: var(--text-muted); }
-
+    /* ── Misc ── */
     .view { display: none; }
     .view.active { display: block; }
-
     .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,.2); border-top-color: #0d0f14; border-radius: 50%; animation: spin .6s linear infinite; }
     .spinner-light { border-color: var(--border); border-top-color: var(--accent); }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* hidden by default on desktop */
     .mobile-nav { display: none; }
-    .fab        { display: none; }
+    .fab { display: none; }
 
-    /* ══════════════════════════════════════
-       RESPONSIVE — tablet  ≤ 960px
-    ══════════════════════════════════════ */
+    /* ════════════ TABLET ════════════ */
     @media (max-width: 960px) {
       .stats-row { grid-template-columns: repeat(2,1fr); }
+      .log-row { grid-template-columns: 110px 55px 1fr; }
     }
 
-    /* ══════════════════════════════════════
-       RESPONSIVE — mobile  ≤ 640px
-    ══════════════════════════════════════ */
+    /* ════════════ MOBILE ════════════ */
     @media (max-width: 640px) {
-      /* stack layout instead of sidebar+main flex row */
       body { display: block; }
       .sidebar { display: none; }
-
-      /* ── topbar ── */
       .topbar { padding: 0 16px; height: 56px; }
       .topbar-title { font-size: 16px; }
-      .topbar-add-btn { display: none; }      /* replaced by FAB */
-      .check-label { display: none; }         /* icon-only "Check All" */
-
-      /* ── content ── */
-      .content {
-        padding: 16px;
-        padding-bottom: calc(var(--mob-nav-h) + 72px); /* room for nav + FAB */
-      }
-
-      /* ── stats 2×2 ── */
+      .topbar-add-btn { display: none; }
+      .check-label { display: none; }
+      .content { padding: 16px; padding-bottom: calc(var(--mob-nav-h) + 72px); }
       .stats-row { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-      .stat-card { padding: 14px 14px; }
+      .stat-card { padding: 14px; }
       .stat-value { font-size: 26px; }
-
-      /* ── product cards: 2-col grid, price row stacked below ── */
-      .product-card {
-        grid-template-columns: 44px 1fr;
-        grid-template-rows: auto auto;
-        gap: 0 12px;
-        padding: 14px;
-        align-items: start;
-      }
-      .product-img {
-        width: 44px; height: 44px;
-        grid-row: 1 / 3;
-        align-self: start;
-        font-size: 20px;
-      }
+      .product-card { grid-template-columns: 44px 1fr; grid-template-rows: auto auto; gap: 0 12px; padding: 14px; align-items: start; }
+      .product-img { width: 44px; height: 44px; grid-row: 1/3; align-self: start; font-size: 20px; }
       .product-info { grid-column: 2; grid-row: 1; }
       .product-name { font-size: 14px; }
-
-      /* price + actions sit below info, full width */
-      .product-price {
-        grid-column: 2; grid-row: 2;
-        text-align: left;
-        margin-top: 10px; padding-top: 10px;
-        border-top: 1px solid var(--border);
-        display: flex; align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap; gap: 6px;
-      }
+      .product-right { grid-column: 2; grid-row: 2; flex-direction: row; align-items: center; justify-content: space-between; width: 100%; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+      .product-price { text-align: left; }
       .price-current { font-size: 19px; }
-      .product-actions { margin-top: 0; justify-content: flex-start; gap: 6px; }
-      .product-actions .btn-sm { padding: 5px 9px; font-size: 11px; }
-
-      /* ── modal → bottom sheet ── */
+      .product-actions { flex-wrap: nowrap; }
+      .product-actions .btn-sm { padding: 5px 8px; font-size: 11px; }
       .modal-overlay { align-items: flex-end; padding: 0; }
-      .modal {
-        border-radius: 20px 20px 0 0;
-        padding: 16px 18px calc(env(safe-area-inset-bottom, 0px) + 24px);
-        width: 100%; max-height: 92vh;
-        transform: translateY(100%);
-      }
+      .modal { border-radius: 20px 20px 0 0; padding: 16px 18px calc(env(safe-area-inset-bottom,0px) + 24px); width: 100%; max-height: 92vh; transform: translateY(100%); }
       .modal-overlay.open .modal { transform: translateY(0); }
-      .modal-handle { display: block; }   /* show drag handle */
-      .modal-title { font-size: 17px; margin-bottom: 18px; }
-
-      /* SMTP row becomes single column on small screens */
+      .modal-handle { display: block; }
       .form-row { grid-template-columns: 1fr; gap: 0; }
-
       .modal-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      .modal-footer .btn { justify-content: center; padding: 13px; font-size: 14px; }
-
-      /* ── settings ── */
+      .modal-footer .btn { justify-content: center; padding: 13px; }
       .settings-section { padding: 16px; }
       .settings-section .form-row { grid-template-columns: 1fr; }
       .settings-save-btn { width: 100%; justify-content: center; padding: 13px; }
-
-      /* ── toast: full-width strip above bottom nav ── */
-      .toast-container {
-        bottom: calc(var(--mob-nav-h) + 8px);
-        left: 12px; right: 12px; max-width: none;
-      }
-
-      /* ── mobile bottom nav ── */
-      .mobile-nav {
-        display: flex; flex-direction: column; justify-content: flex-end;
-        position: fixed; bottom: 0; left: 0; right: 0;
-        height: var(--mob-nav-h);
-        background: var(--surface); border-top: 1px solid var(--border);
-        z-index: 50;
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-      }
-      .mobile-nav-inner {
-        display: flex; height: 100%; align-items: center;
-        justify-content: space-around;
-      }
-      .mob-nav-item {
-        display: flex; flex-direction: column; align-items: center; gap: 3px;
-        padding: 8px 24px; cursor: pointer; border-radius: 10px;
-        -webkit-tap-highlight-color: transparent; user-select: none;
-      }
+      .toast-container { bottom: calc(var(--mob-nav-h) + 8px); left: 12px; right: 12px; max-width: none; }
+      .log-row { grid-template-columns: 90px 50px 1fr; gap: 8px; padding: 8px 12px; }
+      .mobile-nav { display: flex; flex-direction: column; justify-content: flex-end; position: fixed; bottom: 0; left: 0; right: 0; height: var(--mob-nav-h); background: var(--surface); border-top: 1px solid var(--border); z-index: 50; padding-bottom: env(safe-area-inset-bottom,0px); }
+      .mobile-nav-inner { display: flex; height: 100%; align-items: center; justify-content: space-around; }
+      .mob-nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 16px; cursor: pointer; border-radius: 10px; -webkit-tap-highlight-color: transparent; user-select: none; }
       .mob-nav-item:active { background: var(--surface2); }
       .mob-nav-icon { font-size: 21px; line-height: 1; }
       .mob-nav-label { font-size: 10px; font-weight: 600; color: var(--text-muted); letter-spacing: .03em; }
       .mob-nav-item.active .mob-nav-label { color: var(--accent); }
       .mob-nav-item.active .mob-nav-icon { filter: drop-shadow(0 0 4px var(--accent)); }
-
-      /* ── FAB ── */
-      .fab {
-        display: flex; align-items: center; justify-content: center;
-        position: fixed;
-        bottom: calc(var(--mob-nav-h) + 14px);
-        right: 16px; z-index: 60;
-        width: 52px; height: 52px; border-radius: 50%;
-        background: var(--accent); color: #0d0f14;
-        font-size: 26px; font-weight: 700; border: none; cursor: pointer;
-        box-shadow: 0 4px 20px rgba(0,229,160,.35);
-        transition: transform .15s, box-shadow .15s;
-        -webkit-tap-highlight-color: transparent;
-      }
-      .fab:active { transform: scale(.92); box-shadow: 0 2px 10px rgba(0,229,160,.2); }
+      .fab { display: flex; align-items: center; justify-content: center; position: fixed; bottom: calc(var(--mob-nav-h) + 14px); right: 16px; z-index: 60; width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: #0d0f14; font-size: 26px; border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(0,229,160,.35); -webkit-tap-highlight-color: transparent; }
+      .fab:active { transform: scale(.92); }
     }
-
-    /* very small phones */
-    @media (max-width: 360px) {
-      .stat-value { font-size: 22px; }
-      .price-current { font-size: 17px; }
-    }
+    @media (max-width: 360px) { .stat-value { font-size: 22px; } .price-current { font-size: 17px; } }
   </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════
-     SIDEBAR  (desktop)
-═══════════════════════════════ -->
 <nav class="sidebar">
   <div class="logo">Price<span>Watch</span></div>
-  <div class="nav-item active" onclick="showView('dashboard', this)">
-    <span class="nav-icon">📊</span> Dashboard
-  </div>
-  <div class="nav-item" onclick="showView('products', this)">
-    <span class="nav-icon">🛒</span> Products
-  </div>
-  <div class="nav-item" onclick="showView('settings', this)">
-    <span class="nav-icon">⚙️</span> Settings
-  </div>
+  <div class="nav-item active" onclick="showView('dashboard',this)"><span class="nav-icon">📊</span> Dashboard</div>
+  <div class="nav-item" onclick="showView('products',this)"><span class="nav-icon">🛒</span> Products</div>
+  <div class="nav-item" onclick="showView('logs',this)"><span class="nav-icon">📋</span> Scrape Logs</div>
+  <div class="nav-item" onclick="showView('settings',this)"><span class="nav-icon">⚙️</span> Settings</div>
 </nav>
 
-<!-- ═══════════════════════════════
-     MAIN
-═══════════════════════════════ -->
 <div class="main">
-
-  <!-- Topbar -->
   <div class="topbar">
     <div class="topbar-title" id="view-title">Dashboard</div>
     <div class="topbar-actions">
       <button class="btn btn-ghost" onclick="checkAllNow()" id="check-btn">
         <span>🔄</span><span class="check-label"> Check All</span>
       </button>
-      <!-- hidden on mobile, replaced by FAB -->
-      <button class="btn btn-primary topbar-add-btn" onclick="openAddModal()">
-        <span>+</span> Add Product
-      </button>
+      <button class="btn btn-primary topbar-add-btn" onclick="openAddModal()"><span>+</span> Add Product</button>
     </div>
   </div>
 
-  <!-- Content -->
   <div class="content">
 
     <!-- Dashboard -->
@@ -430,7 +231,7 @@
         <div class="stat-card"><div class="stat-label">Tracking</div><div class="stat-value" id="stat-total">—</div></div>
         <div class="stat-card"><div class="stat-label">On Sale</div><div class="stat-value green" id="stat-sale">—</div></div>
         <div class="stat-card"><div class="stat-label">Best Discount</div><div class="stat-value green" id="stat-best">—</div></div>
-        <div class="stat-card"><div class="stat-label">Alerts Sent</div><div class="stat-value" id="stat-alerts">—</div></div>
+        <div class="stat-card"><div class="stat-label">Errors</div><div class="stat-value" id="stat-errors" style="color:var(--red)">—</div></div>
       </div>
       <div id="dashboard-products"></div>
     </div>
@@ -440,267 +241,261 @@
       <div id="products-list"></div>
     </div>
 
-    <!-- Settings -->
-    <div class="view" id="view-settings">
-
-      <div class="settings-section">
-        <div class="settings-section-title">🔔 Slack Notifications</div>
-        <div class="form-group">
-          <label class="form-label">Webhook URL</label>
-          <input class="form-input" id="s-slack" placeholder="https://hooks.slack.com/services/..." />
-          <div class="form-hint">Create an Incoming Webhook in your Slack App settings</div>
+    <!-- Logs -->
+    <div class="view" id="view-logs">
+      <div class="logs-toolbar">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:14px;font-weight:700">Scrape Logs</span>
+          <span class="logs-auto-badge" id="logs-auto-badge">live</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div class="logs-filters">
+            <button class="log-filter-btn active" data-level="ALL" onclick="setLogFilter('ALL',this)">All</button>
+            <button class="log-filter-btn" data-level="ERROR" onclick="setLogFilter('ERROR',this)">Errors</button>
+            <button class="log-filter-btn" data-level="INFO" onclick="setLogFilter('INFO',this)">Info</button>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="loadLogs()">🔄 Refresh</button>
+          <button class="btn btn-danger btn-sm" onclick="clearLogs()">🗑 Clear</button>
         </div>
       </div>
+      <div id="logs-container"></div>
+    </div>
 
+    <!-- Settings -->
+    <div class="view" id="view-settings">
+      <div class="settings-section">
+        <div class="settings-section-title">🔔 Slack Notifications</div>
+        <div class="form-group"><label class="form-label">Webhook URL</label><input class="form-input" id="s-slack" placeholder="https://hooks.slack.com/services/..." /><div class="form-hint">Create an Incoming Webhook in your Slack App settings</div></div>
+      </div>
       <div class="settings-section">
         <div class="settings-section-title">📧 Email Notifications</div>
         <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">SMTP Host</label>
-            <input class="form-input" id="s-smtp-host" placeholder="smtp.gmail.com" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">SMTP Port</label>
-            <input class="form-input" id="s-smtp-port" placeholder="587" />
-          </div>
+          <div class="form-group"><label class="form-label">SMTP Host</label><input class="form-input" id="s-smtp-host" placeholder="smtp.gmail.com" /></div>
+          <div class="form-group"><label class="form-label">SMTP Port</label><input class="form-input" id="s-smtp-port" placeholder="587" /></div>
         </div>
         <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Username / Email</label>
-            <input class="form-input" id="s-smtp-user" placeholder="you@gmail.com" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Password / App Password</label>
-            <input class="form-input" type="password" id="s-smtp-pass" placeholder="••••••••" />
-          </div>
+          <div class="form-group"><label class="form-label">Username / Email</label><input class="form-input" id="s-smtp-user" placeholder="you@gmail.com" /></div>
+          <div class="form-group"><label class="form-label">App Password</label><input class="form-input" type="password" id="s-smtp-pass" placeholder="••••••••" /></div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Send alerts to</label>
-          <input class="form-input" id="s-notify-email" placeholder="alerts@example.com" />
-        </div>
+        <div class="form-group"><label class="form-label">Send alerts to</label><input class="form-input" id="s-notify-email" placeholder="alerts@example.com" /></div>
       </div>
-
       <div class="settings-section">
         <div class="settings-section-title">📱 Pushbullet</div>
-        <div class="form-group">
-          <label class="form-label">API Key</label>
-          <input class="form-input" id="s-pushbullet" placeholder="o.xxxxxxxxxxxxxxxxxxxxxxxx" />
-          <div class="form-hint">Found in your Pushbullet account settings</div>
-        </div>
+        <div class="form-group"><label class="form-label">API Key</label><input class="form-input" id="s-pushbullet" placeholder="o.xxxxxxxxxxxxxxxxxxxxxxxx" /><div class="form-hint">Found in your Pushbullet account settings</div></div>
       </div>
-
       <div class="settings-section">
         <div class="settings-section-title">⏱ Check Interval</div>
-        <div class="form-group">
-          <label class="form-label">Check every N minutes</label>
-          <input class="form-input" id="s-interval" type="number" placeholder="60" min="5" />
-          <div class="form-hint">Minimum recommended: 30 minutes to avoid being rate-limited</div>
-        </div>
+        <div class="form-group"><label class="form-label">Check every N minutes</label><input class="form-input" id="s-interval" type="number" placeholder="60" min="5" /><div class="form-hint">Minimum recommended: 30 minutes to avoid rate limiting</div></div>
       </div>
-
       <button class="btn btn-primary settings-save-btn" onclick="saveSettings()">💾 Save Settings</button>
     </div>
 
-  </div><!-- /content -->
-</div><!-- /main -->
+  </div>
+</div>
 
-<!-- ═══════════════════════════════
-     MOBILE BOTTOM NAV
-═══════════════════════════════ -->
+<!-- Mobile nav -->
 <nav class="mobile-nav">
   <div class="mobile-nav-inner">
-    <div class="mob-nav-item active" id="mnav-dashboard" onclick="showView('dashboard', this, true)">
-      <div class="mob-nav-icon">📊</div>
-      <div class="mob-nav-label">Dashboard</div>
-    </div>
-    <div class="mob-nav-item" id="mnav-products" onclick="showView('products', this, true)">
-      <div class="mob-nav-icon">🛒</div>
-      <div class="mob-nav-label">Products</div>
-    </div>
-    <div class="mob-nav-item" id="mnav-settings" onclick="showView('settings', this, true)">
-      <div class="mob-nav-icon">⚙️</div>
-      <div class="mob-nav-label">Settings</div>
-    </div>
+    <div class="mob-nav-item active" id="mnav-dashboard" onclick="showView('dashboard',this,true)"><div class="mob-nav-icon">📊</div><div class="mob-nav-label">Dashboard</div></div>
+    <div class="mob-nav-item" id="mnav-products" onclick="showView('products',this,true)"><div class="mob-nav-icon">🛒</div><div class="mob-nav-label">Products</div></div>
+    <div class="mob-nav-item" id="mnav-logs" onclick="showView('logs',this,true)"><div class="mob-nav-icon">📋</div><div class="mob-nav-label">Logs</div></div>
+    <div class="mob-nav-item" id="mnav-settings" onclick="showView('settings',this,true)"><div class="mob-nav-icon">⚙️</div><div class="mob-nav-label">Settings</div></div>
   </div>
 </nav>
+<button class="fab" onclick="openAddModal()">+</button>
 
-<!-- FAB (mobile add button) -->
-<button class="fab" onclick="openAddModal()" aria-label="Add product">+</button>
-
-<!-- ═══════════════════════════════
-     ADD / EDIT MODAL
-═══════════════════════════════ -->
-<div class="modal-overlay" id="product-modal" onclick="handleOverlayClick(event)">
+<!-- Add Product Modal -->
+<div class="modal-overlay" id="add-modal" onclick="handleOverlayClick(event,'add-modal')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title" id="modal-title">Add Product</div>
-    <div class="form-group">
-      <label class="form-label">Product URL *</label>
-      <input class="form-input" id="m-url" placeholder="https://www.etos.nl/producten/..." autocomplete="off" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">Custom Name (optional)</label>
-      <input class="form-input" id="m-name" placeholder="Auto-detected from page" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">Alert when discount ≥</label>
-      <input class="form-input" id="m-threshold" type="number" value="5" min="1" max="90" />
-      <div class="form-hint">Send notification only when price drops by this percentage</div>
-    </div>
+    <div class="modal-title">Add Product</div>
+    <div class="form-group"><label class="form-label">Product URL *</label><input class="form-input" id="m-url" placeholder="https://www.etos.nl/..." autocomplete="off" /></div>
+    <div class="form-group"><label class="form-label">Custom Name (optional)</label><input class="form-input" id="m-name" placeholder="Auto-detected from page" /></div>
+    <div class="form-group"><label class="form-label">Alert when discount ≥ %</label><input class="form-input" id="m-threshold" type="number" value="5" min="1" max="90" /><div class="form-hint">Only notified when price drops by this percentage</div></div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="modal-save-btn" onclick="saveProduct()">
-        <span id="modal-spinner"></span>
-        <span id="modal-btn-label">Add Product</span>
+      <button class="btn btn-ghost" onclick="closeModal('add-modal')">Cancel</button>
+      <button class="btn btn-primary" id="add-save-btn" onclick="saveNewProduct()">
+        <span id="add-spinner"></span><span id="add-btn-label">Add Product</span>
       </button>
     </div>
   </div>
 </div>
 
-<!-- Toast container -->
+<!-- Edit Product Modal -->
+<div class="modal-overlay" id="edit-modal" onclick="handleOverlayClick(event,'edit-modal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Edit Product</div>
+    <div class="modal-subtitle" id="edit-url-display"></div>
+
+    <div class="form-group"><label class="form-label">Product Name</label><input class="form-input" id="e-name" placeholder="Auto-detected from page" /></div>
+    <div class="form-group"><label class="form-label">Alert when discount ≥ %</label><input class="form-input" id="e-threshold" type="number" min="1" max="90" /><div class="form-hint">Send notification when price drops by this percentage</div></div>
+
+    <div class="form-group" style="display:flex;align-items:center;justify-content:space-between">
+      <label class="form-label" style="margin:0">Active tracking</label>
+      <div id="e-active-toggle" onclick="toggleEditActive()" style="cursor:pointer;display:flex;align-items:center;gap:8px">
+        <div id="e-toggle-sw" style="width:40px;height:22px;background:var(--border);border-radius:11px;position:relative;transition:background .15s;flex-shrink:0">
+          <div id="e-toggle-knob" style="position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;left:3px;transition:left .15s"></div>
+        </div>
+        <span id="e-toggle-label" style="font-size:13px;color:var(--text-dim)">Enabled</span>
+      </div>
+    </div>
+
+    <hr class="form-divider" />
+
+    <div class="form-group">
+      <label class="form-label">Manual Price Override</label>
+      <input class="form-input" id="e-manual-price" type="number" step="0.01" min="0" placeholder="e.g. 8.29 — adds to price history" />
+      <div class="form-hint">Use this when scraping fails. Adds the price to history as if scraped now.</div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn btn-primary" id="edit-save-btn" onclick="saveEditProduct()">
+        <span id="edit-spinner"></span><span id="edit-btn-label">Save Changes</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- History Modal -->
+<div class="modal-overlay" id="history-modal" onclick="handleOverlayClick(event,'history-modal')">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="history-title">Price History</div>
+    <div id="history-content"></div>
+    <div class="modal-footer"><button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="closeModal('history-modal')">Close</button></div>
+  </div>
+</div>
+
 <div class="toast-container" id="toasts"></div>
 
 <script>
-const API = '';  // same-origin; set to 'http://NAS-IP:5000' if running separately
-
-let products  = [];
+const API = '';
+let products = [];
 let editingId = null;
+let editActiveState = true;
+let logFilter = 'ALL';
+let logRefreshTimer = null;
 
-// ── Navigation ────────────────────────────────────────────────────────────────
-function showView(name, el, isMobileNav = false) {
+// ── Navigation ─────────────────────────────────────────────────────────────
+function showView(name, el, isMobile = false) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
-
-  // sync sidebar (desktop)
   document.querySelectorAll('.sidebar .nav-item').forEach(n => n.classList.remove('active'));
-  const sidebarItem = document.querySelector(`.sidebar .nav-item[onclick*="'${name}'"]`);
-  if (sidebarItem) sidebarItem.classList.add('active');
-
-  // sync mobile nav
+  const si = document.querySelector(`.sidebar .nav-item[onclick*="'${name}'"]`);
+  if (si) si.classList.add('active');
   document.querySelectorAll('.mob-nav-item').forEach(n => n.classList.remove('active'));
-  const mItem = document.getElementById('mnav-' + name);
-  if (mItem) mItem.classList.add('active');
-
+  const mi = document.getElementById('mnav-' + name);
+  if (mi) mi.classList.add('active');
   document.getElementById('view-title').textContent =
-    { dashboard: 'Dashboard', products: 'Products', settings: 'Settings' }[name] || name;
-
+    {dashboard:'Dashboard',products:'Products',logs:'Scrape Logs',settings:'Settings'}[name] || name;
   if (name === 'settings') loadSettings();
+  if (name === 'logs') { loadLogs(); startLogAutoRefresh(); } else { stopLogAutoRefresh(); }
   window.scrollTo(0, 0);
 }
 
-// ── API ───────────────────────────────────────────────────────────────────────
+// ── API ────────────────────────────────────────────────────────────────────
 async function apiFetch(path, opts = {}) {
-  const res = await fetch(API + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  const res = await fetch(API + path, { headers: {'Content-Type':'application/json'}, ...opts });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
-// ── Load products ─────────────────────────────────────────────────────────────
+// ── Products ───────────────────────────────────────────────────────────────
 async function loadProducts() {
   try {
     products = await apiFetch('/api/products');
-    renderDashboard();
-    renderProducts();
-  } catch(e) {
-    toast('Could not reach backend', 'error');
-    console.error(e);
-  }
+    renderDashboard(); renderProducts();
+  } catch(e) { toast('Could not reach backend', 'error'); }
 }
 
-// ── Dashboard ─────────────────────────────────────────────────────────────────
 function renderDashboard() {
   const active = products.filter(p => p.active);
   const onSale = active.filter(p => p.discount_pct > 0);
   const best   = onSale.length ? Math.max(...onSale.map(p => p.discount_pct)) : 0;
-
+  const errors = products.filter(p => p.last_error).length;
   document.getElementById('stat-total').textContent  = active.length;
   document.getElementById('stat-sale').textContent   = onSale.length;
   document.getElementById('stat-best').textContent   = best ? best + '%' : '—';
-  document.getElementById('stat-alerts').textContent = '—';
-
-  const sorted = [...products].sort((a, b) => (b.discount_pct || 0) - (a.discount_pct || 0));
+  document.getElementById('stat-errors').textContent = errors || '—';
+  const sorted = [...products].sort((a,b) => (b.discount_pct||0)-(a.discount_pct||0));
   document.getElementById('dashboard-products').innerHTML = sorted.length
     ? `<div class="products-grid">${sorted.map(productCard).join('')}</div>`
-    : emptyState('No products yet', 'Tap + to start tracking prices.');
+    : emptyState('No products yet','Tap + to start tracking prices.');
 }
 
 function renderProducts() {
   document.getElementById('products-list').innerHTML = products.length
     ? `<div class="products-grid">${products.map(productCard).join('')}</div>`
-    : emptyState('No products', 'Add a product URL to start tracking.');
+    : emptyState('No products','Add a product URL to start tracking.');
 }
 
-// ── Product card ──────────────────────────────────────────────────────────────
 function productCard(p) {
   const hasDiscount = p.discount_pct > 0;
+  const hasError    = !!p.last_error && !p.current_price;
   const imgHtml = p.image_url
     ? `<img src="${escAttr(p.image_url)}" alt="" onerror="this.style.display='none'" />`
     : '🛍️';
 
-  // Price block — uses current_price (float) and previous_price from the API.
-  // Falls back gracefully when either value is null so the frontend never
-  // shows "undefined" or crashes on .toFixed().
-  let priceBlock = '';
+  let priceBlock;
   if (p.current_price != null) {
     const curr = fmtPrice(p.current_price);
-    const prev = p.previous_price != null && p.previous_price !== p.current_price
-      ? fmtPrice(p.previous_price) : null;
-    priceBlock = `
-      <div class="price-current">€${curr}</div>
+    const prev = p.previous_price != null && p.previous_price !== p.current_price ? fmtPrice(p.previous_price) : null;
+    priceBlock = `<div class="price-current">€${curr}</div>
       ${prev ? `<div class="price-original">€${prev}</div>` : ''}
       ${hasDiscount ? `<div class="price-discount">↓${p.discount_pct}%</div>` : ''}`;
   } else {
-    priceBlock = `<div class="price-current" style="color:var(--text-muted);font-size:14px">Pending…</div>`;
+    priceBlock = `<div class="price-current" style="color:var(--text-muted);font-size:13px">${hasError ? 'Error' : 'Pending…'}</div>`;
   }
 
   const lastChecked = p.last_checked
-    ? new Date(p.last_checked).toLocaleString('nl-NL', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })
+    ? new Date(p.last_checked).toLocaleString('nl-NL',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})
     : 'Never';
 
+  const dotClass = hasError ? 'dot-red' : (p.active ? 'dot-green' : 'dot-muted');
+
   return `
-  <div class="product-card${hasDiscount ? ' has-discount' : ''}" id="card-${p.id}">
+  <div class="product-card${hasDiscount?' has-discount':''}${hasError?' has-error':''}" id="card-${p.id}">
     <div class="product-img">${imgHtml}</div>
     <div class="product-info">
-      <div class="product-name">${escHtml(p.name || p.url)}</div>
+      <div class="product-name">${escHtml(p.name||p.url)}</div>
       <div class="product-url">${escHtml(shortenUrl(p.url))}</div>
       <div class="product-meta">
-        <span class="dot ${p.active ? 'dot-green' : 'dot-muted'}"></span>
-        ${hasDiscount ? `<span class="badge badge-green">ON SALE</span>` : ''}
-        <span class="badge badge-muted">≥${p.threshold || 5}% alert</span>
+        <span class="dot ${dotClass}"></span>
+        ${hasDiscount?`<span class="badge badge-green">ON SALE</span>`:''}
+        ${hasError?`<span class="badge badge-red">SCRAPE ERROR</span>`:''}
+        <span class="badge badge-muted">≥${p.threshold||5}% alert</span>
         <span style="font-size:11px;color:var(--text-muted)">Checked: ${escHtml(lastChecked)}</span>
       </div>
+      ${hasError?`<div class="product-error">⚠ ${escHtml(p.last_error)}</div>`:''}
+    </div>
+    <div class="product-right">
+      <div class="product-price">${priceBlock}</div>
       <div class="product-actions">
-        <button class="btn btn-ghost btn-sm" onclick="checkOne(${p.id})">🔄 Check</button>
-        <button class="btn btn-ghost btn-sm" onclick="showHistory(${p.id})">📈 History</button>
-        <button class="btn btn-ghost btn-sm" onclick="toggleProduct(${p.id}, ${!p.active})">${p.active ? '⏸ Pause' : '▶ Resume'}</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">🗑 Delete</button>
+        <button class="btn btn-ghost btn-sm" onclick="checkOne(${p.id})" title="Check now">🔄</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditModal(${p.id})" title="Edit">✏️ Edit</button>
+        <button class="btn btn-ghost btn-sm" onclick="showHistory(${p.id})" title="History">📈</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})" title="Delete">🗑</button>
       </div>
     </div>
-    <div class="product-price">${priceBlock}</div>
   </div>`;
 }
 
-function emptyState(title = 'Nothing here', desc = '') {
-  return `<div class="empty">
-    <div class="empty-icon">🔍</div>
-    <div class="empty-title">${escHtml(title)}</div>
-    <div class="empty-desc">${escHtml(desc)}</div>
-  </div>`;
+function emptyState(title='',desc='') {
+  return `<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">${escHtml(title)}</div><div class="empty-desc">${escHtml(desc)}</div></div>`;
 }
 
-// ── Product actions ───────────────────────────────────────────────────────────
+// ── Check ─────────────────────────────────────────────────────────────────
 async function checkOne(id) {
-  const card = document.getElementById('card-' + id);
+  const card = document.getElementById('card-'+id);
   if (card) card.style.opacity = '0.5';
   try {
-    await apiFetch(`/api/products/${id}/check`, { method: 'POST' });
-    await loadProducts();
-    toast('Price updated!', 'success');
-  } catch(e) {
-    toast('Check failed', 'error');
-  } finally {
-    if (card) card.style.opacity = '';
-  }
+    await apiFetch(`/api/products/${id}/check`, {method:'POST'});
+    await loadProducts(); await loadLogs();
+    toast('Price updated!','success');
+  } catch(e) { toast('Check failed','error'); }
+  finally { if (card) card.style.opacity = ''; }
 }
 
 async function checkAllNow() {
@@ -708,214 +503,287 @@ async function checkAllNow() {
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner spinner-light"></span><span class="check-label"> Checking…</span>`;
   try {
-    await apiFetch('/api/check-all', { method: 'POST' });
-    await loadProducts();
-    toast('All prices updated!', 'success');
-  } catch(e) {
-    toast('Check failed', 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = `<span>🔄</span><span class="check-label"> Check All</span>`;
-  }
+    await apiFetch('/api/check-all',{method:'POST'});
+    await loadProducts(); await loadLogs();
+    toast('All prices updated!','success');
+  } catch(e) { toast('Check failed','error'); }
+  finally { btn.disabled=false; btn.innerHTML=`<span>🔄</span><span class="check-label"> Check All</span>`; }
 }
 
 async function deleteProduct(id) {
-  const p = products.find(x => x.id === id);
-  if (!confirm(`Delete "${p ? (p.name || p.url) : 'this product'}"?`)) return;
+  const p = products.find(x=>x.id===id);
+  if (!confirm(`Delete "${p?(p.name||p.url):'this product'}"?`)) return;
   try {
-    await apiFetch(`/api/products/${id}`, { method: 'DELETE' });
+    await apiFetch(`/api/products/${id}`,{method:'DELETE'});
     await loadProducts();
-    toast('Product removed', 'success');
-  } catch(e) {
-    toast('Delete failed', 'error');
-  }
+    toast('Product removed','success');
+  } catch(e) { toast('Delete failed','error'); }
 }
 
-async function toggleProduct(id, active) {
-  try {
-    await apiFetch(`/api/products/${id}`, { method: 'PUT', body: JSON.stringify({ active: active ? 1 : 0 }) });
-    await loadProducts();
-  } catch(e) {
-    toast('Update failed', 'error');
-  }
-}
-
-async function showHistory(id) {
-  const product = products.find(p => p.id === id);
-  let data;
-  try {
-    data = await apiFetch(`/api/products/${id}`);
-  } catch(e) {
-    toast('Could not load history', 'error');
-    return;
-  }
-  const history = data.price_history || [];
-  if (!history.length) { toast('No price history yet', 'success'); return; }
-
-  const prices = history.map(h => h.price);
-  const min = Math.min(...prices), max = Math.max(...prices);
-  const range = max - min || 1;
-  const W = 400, H = 100, pad = 8;
-  const pts = prices.map((p, i) => {
-    const x = pad + (i / Math.max(prices.length - 1, 1)) * (W - pad * 2);
-    const y = H - pad - ((p - min) / range) * (H - pad * 2);
-    return `${x},${y}`;
-  }).join(' ');
-
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay open';
-  overlay.innerHTML = `
-    <div class="modal" style="max-width:440px">
-      <div class="modal-handle"></div>
-      <div class="modal-title">📈 ${escHtml(product ? (product.name || product.url) : 'Price History')}</div>
-      <div class="history-panel" style="border:none;padding:0">
-        <svg viewBox="0 0 ${W} ${H}" class="chart-svg" style="height:120px">
-          <defs>
-            <linearGradient id="chg" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#00e5a0" stop-opacity=".3"/>
-              <stop offset="100%" stop-color="#00e5a0" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <polygon fill="url(#chg)" points="${pts} ${W - pad},${H - pad} ${pad},${H - pad}"/>
-          <polyline fill="none" stroke="#00e5a0" stroke-width="2" points="${pts}"/>
-        </svg>
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);font-family:var(--mono);margin-top:8px;flex-wrap:wrap;gap:4px">
-          <span>Min: €${fmtPrice(min)}</span>
-          <span>${history.length} checks</span>
-          <span>Max: €${fmtPrice(max)}</span>
-        </div>
-      </div>
-      <div class="modal-footer" style="margin-top:20px">
-        <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="this.closest('.modal-overlay').remove()">Close</button>
-      </div>
-    </div>`;
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-  document.body.appendChild(overlay);
-}
-
-// ── Add / Edit modal ──────────────────────────────────────────────────────────
+// ── Add Modal ─────────────────────────────────────────────────────────────
 function openAddModal() {
-  editingId = null;
-  document.getElementById('modal-title').textContent    = 'Add Product';
-  document.getElementById('modal-btn-label').textContent = 'Add Product';
-  document.getElementById('m-url').value       = '';
-  document.getElementById('m-url').disabled    = false;
-  document.getElementById('m-name').value      = '';
+  document.getElementById('m-url').value = '';
+  document.getElementById('m-name').value = '';
   document.getElementById('m-threshold').value = '5';
-  document.getElementById('product-modal').classList.add('open');
+  openModal('add-modal');
   setTimeout(() => document.getElementById('m-url').focus(), 350);
 }
 
-function closeModal() {
-  document.getElementById('product-modal').classList.remove('open');
-  editingId = null;
-}
-
-function handleOverlayClick(e) {
-  if (e.target === document.getElementById('product-modal')) closeModal();
-}
-
-async function saveProduct() {
-  const url       = document.getElementById('m-url').value.trim();
-  const name      = document.getElementById('m-name').value.trim();
-  const threshold = parseFloat(document.getElementById('m-threshold').value) || 5;
-
-  if (!url) { toast('URL is required', 'error'); return; }
-
-  const btn     = document.getElementById('modal-save-btn');
-  const spinner = document.getElementById('modal-spinner');
-  const label   = document.getElementById('modal-btn-label');
-  btn.disabled  = true;
-  spinner.className = 'spinner';
-  label.textContent = 'Saving…';
-
+async function saveNewProduct() {
+  const url = document.getElementById('m-url').value.trim();
+  const name = document.getElementById('m-name').value.trim();
+  const threshold = parseFloat(document.getElementById('m-threshold').value)||5;
+  if (!url) { toast('URL is required','error'); return; }
+  setBtnLoading('add-save-btn','add-spinner','add-btn-label','Adding…');
   try {
-    await apiFetch('/api/products', {
-      method: 'POST',
-      body: JSON.stringify({ url, name: name || null, threshold }),
-    });
-    closeModal();
-    await loadProducts();
-    toast('Product added! Fetching price…', 'success');
+    await apiFetch('/api/products',{method:'POST',body:JSON.stringify({url,name:name||null,threshold})});
+    closeModal('add-modal');
+    await loadProducts(); await loadLogs();
+    toast('Product added! Fetching price…','success');
   } catch(e) {
-    let msg = 'Failed to add product';
-    try { msg = JSON.parse(e.message).error || msg; } catch(_) {}
-    toast(msg, 'error');
-  } finally {
-    btn.disabled = false;
-    spinner.className = '';
-    label.textContent = 'Add Product';
-  }
+    let msg='Failed to add product';
+    try { msg=JSON.parse(e.message).error||msg; } catch(_){}
+    toast(msg,'error');
+  } finally { clearBtnLoading('add-save-btn','add-spinner','add-btn-label','Add Product'); }
 }
 
-// ── Settings ──────────────────────────────────────────────────────────────────
+// ── Edit Modal ────────────────────────────────────────────────────────────
+function openEditModal(id) {
+  const p = products.find(x=>x.id===id);
+  if (!p) return;
+  editingId = id;
+  editActiveState = !!p.active;
+
+  document.getElementById('edit-url-display').textContent = p.url;
+  document.getElementById('e-name').value = (p.name && p.name !== p.url) ? p.name : '';
+  document.getElementById('e-threshold').value = p.threshold || 5;
+  document.getElementById('e-manual-price').value = '';
+  updateEditToggle(editActiveState);
+  openModal('edit-modal');
+}
+
+function toggleEditActive() {
+  editActiveState = !editActiveState;
+  updateEditToggle(editActiveState);
+}
+
+function updateEditToggle(active) {
+  const sw = document.getElementById('e-toggle-sw');
+  const knob = document.getElementById('e-toggle-knob');
+  const label = document.getElementById('e-toggle-label');
+  sw.style.background = active ? 'var(--accent)' : 'var(--border)';
+  knob.style.left = active ? '21px' : '3px';
+  label.textContent = active ? 'Enabled' : 'Paused';
+  label.style.color = active ? 'var(--accent)' : 'var(--text-muted)';
+}
+
+async function saveEditProduct() {
+  if (!editingId) return;
+  const name = document.getElementById('e-name').value.trim();
+  const threshold = parseFloat(document.getElementById('e-threshold').value)||5;
+  const manualPriceRaw = document.getElementById('e-manual-price').value.trim();
+  const manualPrice = manualPriceRaw ? parseFloat(manualPriceRaw) : null;
+
+  if (manualPrice !== null && (isNaN(manualPrice) || manualPrice <= 0)) {
+    toast('Invalid manual price','error'); return;
+  }
+
+  setBtnLoading('edit-save-btn','edit-spinner','edit-btn-label','Saving…');
+  try {
+    const body = {
+      name: name || null,
+      threshold,
+      active: editActiveState ? 1 : 0,
+    };
+    if (manualPrice !== null) body.manual_price = manualPrice;
+
+    await apiFetch(`/api/products/${editingId}`,{method:'PUT',body:JSON.stringify(body)});
+    closeModal('edit-modal');
+    await loadProducts(); await loadLogs();
+    toast('Product updated ✓','success');
+  } catch(e) { toast('Save failed','error'); }
+  finally { clearBtnLoading('edit-save-btn','edit-spinner','edit-btn-label','Save Changes'); }
+}
+
+// ── History Modal ──────────────────────────────────────────────────────────
+async function showHistory(id) {
+  const p = products.find(x=>x.id===id);
+  let data;
+  try { data = await apiFetch(`/api/products/${id}`); }
+  catch(e) { toast('Could not load history','error'); return; }
+  const history = data.price_history || [];
+
+  if (!history.length) {
+    toast('No price history yet','success'); return;
+  }
+
+  document.getElementById('history-title').textContent =
+    `📈 ${p ? (p.name||p.url).slice(0,40) : 'Price History'}`;
+
+  const prices = history.map(h=>h.price);
+  const min = Math.min(...prices), max = Math.max(...prices), range = max-min||1;
+  const W=440, H=110, pad=10;
+  const pts = prices.map((pr,i)=>{
+    const x = pad + (i/Math.max(prices.length-1,1))*(W-pad*2);
+    const y = H-pad-((pr-min)/range)*(H-pad*2);
+    return `${x},${y}`;
+  }).join(' ');
+
+  // Last 5 entries table
+  const recent = [...history].reverse().slice(0,5);
+  const rows = recent.map(h=>`
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">
+      <span style="color:var(--text-muted);font-family:var(--mono)">${new Date(h.checked_at).toLocaleString('nl-NL',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+      <span style="font-family:var(--mono);font-weight:700">€${fmtPrice(h.price)}</span>
+    </div>`).join('');
+
+  document.getElementById('history-content').innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:110px;margin-bottom:12px">
+      <defs><linearGradient id="chg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#00e5a0" stop-opacity=".25"/>
+        <stop offset="100%" stop-color="#00e5a0" stop-opacity="0"/>
+      </linearGradient></defs>
+      <polygon fill="url(#chg)" points="${pts} ${W-pad},${H-pad} ${pad},${H-pad}"/>
+      <polyline fill="none" stroke="#00e5a0" stroke-width="2" points="${pts}"/>
+    </svg>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-bottom:16px">
+      <span>Min €${fmtPrice(min)}</span><span>${history.length} checks</span><span>Max €${fmtPrice(max)}</span>
+    </div>
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin-bottom:8px">Recent checks</div>
+    ${rows}`;
+
+  openModal('history-modal');
+}
+
+// ── Logs ───────────────────────────────────────────────────────────────────
+async function loadLogs() {
+  try {
+    const logs = await apiFetch('/api/logs?limit=150');
+    renderLogs(logs);
+  } catch(e) { /* silently fail */ }
+}
+
+function renderLogs(logs) {
+  const filtered = logFilter === 'ALL' ? logs : logs.filter(l => l.level === logFilter);
+  const el = document.getElementById('logs-container');
+
+  if (!filtered.length) {
+    el.innerHTML = `<div class="logs-empty">📭 No log entries${logFilter!=='ALL'?' for filter: '+logFilter:''}</div>`;
+    return;
+  }
+
+  const rows = filtered.map(l => {
+    const t = new Date(l.logged_at);
+    const time = t.toLocaleString('nl-NL',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const productLabel = l.product_name
+      ? escHtml(l.product_name.slice(0,30))
+      : (l.product_url ? escHtml(shortenUrl(l.product_url)) : '');
+    return `<div class="log-row">
+      <div>
+        <div class="log-time">${time}</div>
+        ${productLabel?`<div class="log-product">${productLabel}</div>`:''}
+      </div>
+      <div class="log-level ${l.level}">${l.level}</div>
+      <div class="log-message">${escHtml(l.message)}</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="logs-table">${rows}</div>`;
+}
+
+function setLogFilter(level, btn) {
+  logFilter = level;
+  document.querySelectorAll('.log-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadLogs();
+}
+
+async function clearLogs() {
+  if (!confirm('Clear all scrape logs?')) return;
+  try {
+    await apiFetch('/api/logs',{method:'DELETE'});
+    await loadLogs();
+    toast('Logs cleared','success');
+  } catch(e) { toast('Clear failed','error'); }
+}
+
+function startLogAutoRefresh() {
+  stopLogAutoRefresh();
+  logRefreshTimer = setInterval(loadLogs, 8000);
+  document.getElementById('logs-auto-badge').style.display = '';
+}
+function stopLogAutoRefresh() {
+  if (logRefreshTimer) { clearInterval(logRefreshTimer); logRefreshTimer = null; }
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────
 async function loadSettings() {
   try {
     const s = await apiFetch('/api/settings');
-    document.getElementById('s-slack').value        = s.slack_webhook || '';
-    document.getElementById('s-notify-email').value = s.notify_email || '';
-    document.getElementById('s-smtp-host').value    = s.smtp_host || '';
-    document.getElementById('s-smtp-port').value    = s.smtp_port || '587';
-    document.getElementById('s-smtp-user').value    = s.smtp_user || '';
-    document.getElementById('s-smtp-pass').value    = s.smtp_pass || '';
-    document.getElementById('s-pushbullet').value   = s.pushbullet_key || '';
-    document.getElementById('s-interval').value     = s.check_interval || '60';
-  } catch(e) { toast('Could not load settings', 'error'); }
+    document.getElementById('s-slack').value       = s.slack_webhook||'';
+    document.getElementById('s-notify-email').value= s.notify_email||'';
+    document.getElementById('s-smtp-host').value   = s.smtp_host||'';
+    document.getElementById('s-smtp-port').value   = s.smtp_port||'587';
+    document.getElementById('s-smtp-user').value   = s.smtp_user||'';
+    document.getElementById('s-smtp-pass').value   = s.smtp_pass||'';
+    document.getElementById('s-pushbullet').value  = s.pushbullet_key||'';
+    document.getElementById('s-interval').value    = s.check_interval||'60';
+  } catch(e) { toast('Could not load settings','error'); }
 }
 
 async function saveSettings() {
   try {
-    await apiFetch('/api/settings', {
-      method: 'POST',
-      body: JSON.stringify({
-        slack_webhook:  document.getElementById('s-slack').value.trim(),
-        notify_email:   document.getElementById('s-notify-email').value.trim(),
-        smtp_host:      document.getElementById('s-smtp-host').value.trim(),
-        smtp_port:      document.getElementById('s-smtp-port').value.trim(),
-        smtp_user:      document.getElementById('s-smtp-user').value.trim(),
-        smtp_pass:      document.getElementById('s-smtp-pass').value.trim(),
-        pushbullet_key: document.getElementById('s-pushbullet').value.trim(),
-        check_interval: document.getElementById('s-interval').value.trim(),
-      }),
-    });
-    toast('Settings saved!', 'success');
-  } catch(e) { toast('Save failed', 'error'); }
+    await apiFetch('/api/settings',{method:'POST',body:JSON.stringify({
+      slack_webhook:  document.getElementById('s-slack').value.trim(),
+      notify_email:   document.getElementById('s-notify-email').value.trim(),
+      smtp_host:      document.getElementById('s-smtp-host').value.trim(),
+      smtp_port:      document.getElementById('s-smtp-port').value.trim(),
+      smtp_user:      document.getElementById('s-smtp-user').value.trim(),
+      smtp_pass:      document.getElementById('s-smtp-pass').value.trim(),
+      pushbullet_key: document.getElementById('s-pushbullet').value.trim(),
+      check_interval: document.getElementById('s-interval').value.trim(),
+    })});
+    toast('Settings saved!','success');
+  } catch(e) { toast('Save failed','error'); }
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
-function toast(msg, type = 'success') {
+// ── Modal helpers ──────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function handleOverlayClick(e, id) { if (e.target===document.getElementById(id)) closeModal(id); }
+
+function setBtnLoading(btnId, spinnerId, labelId, text) {
+  document.getElementById(btnId).disabled = true;
+  document.getElementById(spinnerId).className = 'spinner';
+  document.getElementById(labelId).textContent = text;
+}
+function clearBtnLoading(btnId, spinnerId, labelId, text) {
+  document.getElementById(btnId).disabled = false;
+  document.getElementById(spinnerId).className = '';
+  document.getElementById(labelId).textContent = text;
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg, type='success') {
   const el = document.createElement('div');
   el.className = `toast ${type}`;
-  el.innerHTML = `<span>${type === 'success' ? '✓' : '✗'}</span> ${escHtml(msg)}`;
+  el.innerHTML = `<span>${type==='success'?'✓':'✗'}</span> ${escHtml(msg)}`;
   document.getElementById('toasts').appendChild(el);
-  setTimeout(() => el.remove(), 3500);
+  setTimeout(()=>el.remove(), 3500);
 }
 
-// ── Utilities ─────────────────────────────────────────────────────────────────
-function escHtml(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function escAttr(s) {
-  return String(s ?? '').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-function fmtPrice(n) {
-  // Always returns a string like "12,95" (Dutch locale, 2 decimals)
-  return Number(n).toFixed(2).replace('.', ',');
-}
+// ── Utils ──────────────────────────────────────────────────────────────────
+function escHtml(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return String(s??'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function fmtPrice(n) { return Number(n).toFixed(2).replace('.',','); }
 function shortenUrl(url) {
-  try {
-    const u = new URL(url);
-    const path = u.pathname.length > 38 ? u.pathname.slice(0, 38) + '…' : u.pathname;
-    return u.hostname.replace('www.', '') + path;
-  } catch { return String(url).slice(0, 55); }
+  try { const u=new URL(url); const p=u.pathname.length>36?u.pathname.slice(0,36)+'…':u.pathname; return u.hostname.replace('www.','')+p; }
+  catch { return String(url).slice(0,55); }
 }
 
-// Submit modal on Enter key in URL field
-document.getElementById('m-url').addEventListener('keydown', e => {
-  if (e.key === 'Enter') saveProduct();
-});
+document.getElementById('m-url').addEventListener('keydown', e => { if (e.key==='Enter') saveNewProduct(); });
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// ── Init ───────────────────────────────────────────────────────────────────
 loadProducts();
 setInterval(loadProducts, 60_000);
 </script>

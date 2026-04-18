@@ -1,5 +1,9 @@
 version: "3.9"
 
+# ─────────────────────────────────────────────────────────────────
+# All configurable values are read from .env (copy .env.example)
+# ─────────────────────────────────────────────────────────────────
+
 services:
 
   backend:
@@ -8,18 +12,50 @@ services:
     restart: unless-stopped
     environment:
       - DB_PATH=/data/pricewatch.db
-      - LOG_LEVEL=INFO        # set to DEBUG for verbose scraper output
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       - pricewatch-data:/data
+    networks:
+      - internal
 
   frontend:
     build: ./frontend
     container_name: pricewatch-frontend
     restart: unless-stopped
     ports:
-      - "18080:80"
+      - "${FRONTEND_PORT:-18080}:80"
     depends_on:
       - backend
+    networks:
+      - internal
+      - traefik_proxy
+    labels:
+      # ── Enable Traefik ──────────────────────────────────────────
+      - "traefik.enable=true"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:-traefik_proxy}"
+
+      # ── HTTPS router ────────────────────────────────────────────
+      - "traefik.http.routers.pricewatch.rule=Host(`${APP_HOST:-pricewatch.example.com}`)"
+      - "traefik.http.routers.pricewatch.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
+      - "traefik.http.routers.pricewatch.tls=true"
+      - "traefik.http.routers.pricewatch.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}"
+
+      # ── HTTP → HTTPS redirect ────────────────────────────────────
+      - "traefik.http.routers.pricewatch-http.rule=Host(`${APP_HOST:-pricewatch.example.com}`)"
+      - "traefik.http.routers.pricewatch-http.entrypoints=web"
+      - "traefik.http.routers.pricewatch-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+
+      # ── Service port ─────────────────────────────────────────────
+      - "traefik.http.services.pricewatch.loadbalancer.server.port=80"
+
+networks:
+  internal:
+    driver: bridge
+  traefik_proxy:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik_proxy}
 
 volumes:
   pricewatch-data:
