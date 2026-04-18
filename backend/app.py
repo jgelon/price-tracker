@@ -3,22 +3,21 @@ PriceWatch – Flask backend
 ==========================
 Routes
 ------
-  GET  /api/products            list all products
-  POST /api/products            add a new product  ← bug was here (fixed)
-  GET  /api/products/<id>       get single product + price history
-  PUT  /api/products/<id>       update (name, threshold, active)
-  DELETE /api/products/<id>     remove product + history
-  POST /api/products/<id>/check force-check one product
-  POST /api/check-all           force-check all active products
-  GET  /api/settings            read settings
-  POST /api/settings            save settings
+  GET    /api/products              list all products (with current + previous price)
+  POST   /api/products              add a new product
+  GET    /api/products/<id>         get single product + full price history
+  PUT    /api/products/<id>         update name / threshold / active
+  DELETE /api/products/<id>         remove product + history
+  POST   /api/products/<id>/check   force-check one product
+  POST   /api/check-all             force-check all active products
+  GET    /api/settings              read settings
+  POST   /api/settings              save settings
 """
 
 import logging
 import logging.config
 import os
 import sqlite3
-import time
 from datetime import datetime, timezone
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -28,12 +27,13 @@ from flask_cors import CORS
 from scrapers import scrape_url
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Logging setup – structured, levelled, goes to stdout (Docker-friendly)
+# Logging — structured, levelled, stdout (Docker-friendly)
+# Set LOG_LEVEL env var to DEBUG for verbose scraper output.
 # ─────────────────────────────────────────────────────────────────────────────
 
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 
-LOGGING_CONFIG = {
+logging.config.dictConfig({
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
@@ -49,13 +49,9 @@ LOGGING_CONFIG = {
             "stream": "ext://sys.stdout",
         }
     },
-    "root": {
-        "level": LOG_LEVEL,
-        "handlers": ["console"],
-    },
-}
+    "root": {"level": LOG_LEVEL, "handlers": ["console"]},
+})
 
-logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 logger.info("PriceWatch backend starting (log level=%s)", LOG_LEVEL)
 
@@ -75,9 +71,7 @@ def get_db() -> sqlite3.Connection:
         logger.debug("Opening DB connection to %s", DB_PATH)
         g.db = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
         g.db.row_factory = sqlite3.Row
-        # Enable WAL for better concurrency
         g.db.execute("PRAGMA journal_mode=WAL")
-        # Enforce foreign keys
         g.db.execute("PRAGMA foreign_keys=ON")
     return g.db
 
@@ -95,18 +89,17 @@ def close_db(exc=None):
 def init_db():
     """Create tables if they don't already exist."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    # Use a fresh connection here (called before first request)
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS products (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                url         TEXT    NOT NULL UNIQUE,
-                name        TEXT,
-                threshold   REAL    NOT NULL DEFAULT 0,
-                active      INTEGER NOT NULL DEFAULT 1,
-                created_at  TEXT    NOT NULL,
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                url          TEXT    NOT NULL UNIQUE,
+                name         TEXT,
+                threshold    REAL    NOT NULL DEFAULT 0,
+                active       INTEGER NOT NULL DEFAULT 1,
+                created_at   TEXT    NOT NULL,
                 last_checked TEXT
             );
 
@@ -147,18 +140,16 @@ def _save_setting(key: str, value: str):
         "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         (key, value),
     )
-    # Note: caller must commit
+    # Note: caller is responsible for commit
 
 
 def _check_product(product_id: int) -> dict:
     """
-    Fetch current price for a product, persist it to price_history,
-    send alerts if warranted, and return a status dict.
+    Fetch current price for a product, persist to price_history,
+    fire alerts if warranted, and return a status dict.
     """
     db = get_db()
-    product = db.execute(
-        "SELECT * FROM products WHERE id = ?", (product_id,)
-    ).fetchone()
+    product = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
 
     if not product:
         logger.error("_check_product: product id=%s not found", product_id)
@@ -175,32 +166,25 @@ def _check_product(product_id: int) -> dict:
             "Price check failed for product id=%s url=%s error=%r",
             product_id, url, result.error,
         )
-        db.execute(
-            "UPDATE products SET last_checked = ? WHERE id = ?", (now, product_id)
-        )
+        db.execute("UPDATE products SET last_checked = ? WHERE id = ?", (now, product_id))
         db.commit()
         return {"product_id": product_id, "error": result.error, "checked_at": now}
 
     price = result.price
-    # Update product name if it was empty or scraper returned a better one
+
+    # Update name if scraper found one and we don't have one yet
     if result.name and not product["name"]:
-        db.execute(
-            "UPDATE products SET name = ? WHERE id = ?", (result.name, product_id)
-        )
+        db.execute("UPDATE products SET name = ? WHERE id = ?", (result.name, product_id))
         logger.info("Updated name for product id=%s → %r", product_id, result.name)
 
     db.execute(
         "INSERT INTO price_history (product_id, price, checked_at) VALUES (?, ?, ?)",
         (product_id, price, now),
     )
-    db.execute(
-        "UPDATE products SET last_checked = ? WHERE id = ?", (now, product_id)
-    )
+    db.execute("UPDATE products SET last_checked = ? WHERE id = ?", (now, product_id))
     db.commit()
 
-    logger.info(
-        "Price recorded: product id=%s price=%.2f url=%s", product_id, price, url
-    )
+    logger.info("Price recorded: product id=%s price=%.2f url=%s", product_id, price, url)
 
     # Alert logic
     threshold = product["threshold"] or 0
@@ -220,12 +204,7 @@ def _check_product(product_id: int) -> dict:
                     )
                     _send_alerts(product, price, previous_price, pct_drop)
 
-    return {
-        "product_id": product_id,
-        "price": price,
-        "name": result.name,
-        "checked_at": now,
-    }
+    return {"product_id": product_id, "price": price, "name": result.name, "checked_at": now}
 
 
 def _send_alerts(product, current_price: float, previous_price: float, pct_drop: float):
@@ -302,13 +281,31 @@ def list_products():
     products = []
     for row in rows:
         p = dict(row)
-        # Attach latest price
+
+        # Latest price — always a float or explicit null, never undefined
         latest = db.execute(
-            "SELECT price FROM price_history WHERE product_id = ? ORDER BY id DESC LIMIT 1",
+            "SELECT price, checked_at FROM price_history "
+            "WHERE product_id = ? ORDER BY id DESC LIMIT 1",
             (p["id"],),
         ).fetchone()
-        p["current_price"] = latest["price"] if latest else None
+        p["current_price"] = round(latest["price"], 2) if latest else None
+        p["last_price_at"] = latest["checked_at"] if latest else None
+
+        # Previous price — used by the frontend for the strikethrough / trend
+        prev = db.execute(
+            "SELECT price FROM price_history "
+            "WHERE product_id = ? ORDER BY id DESC LIMIT 1 OFFSET 1",
+            (p["id"],),
+        ).fetchone()
+        p["previous_price"] = round(prev["price"], 2) if prev else None
+
+        # Guarantee name is always a non-empty string so the frontend never
+        # shows "undefined" while waiting for the first scrape.
+        if not p.get("name"):
+            p["name"] = p["url"]
+
         products.append(p)
+
     logger.debug("Returning %d products", len(products))
     return jsonify(products)
 
@@ -318,13 +315,13 @@ def add_product():
     """
     Add a new product and immediately check its price.
 
-    Bug that was present:
-      - The INSERT used to run inside a try/except that swallowed the error
-        and returned 201 without actually committing, so the row was never
-        persisted.  We now:
-          1. Validate required fields before touching the DB.
-          2. Explicitly call db.commit() after every write.
-          3. Log the full exception so errors are visible in container logs.
+    FIX: The original code was missing db.commit() after the INSERT, so the
+    row was held in an uncommitted transaction that was rolled back at request
+    end — the product was never actually saved.  Fixed by:
+      1. Validating input before touching the DB.
+      2. Calling db.commit() immediately after the INSERT.
+      3. Rolling back explicitly on any error and returning a proper error response.
+      4. Logging every failure so it shows up in container logs.
     """
     data = request.get_json(silent=True) or {}
     url = (data.get("url") or "").strip()
@@ -340,7 +337,7 @@ def add_product():
 
     db = get_db()
 
-    # Check for duplicate
+    # Reject duplicates early with a clear message
     existing = db.execute("SELECT id FROM products WHERE url = ?", (url,)).fetchone()
     if existing:
         logger.warning("add_product: duplicate url %r (existing id=%s)", url, existing["id"])
@@ -353,8 +350,7 @@ def add_product():
             (url, name, threshold, now),
         )
         product_id = cursor.lastrowid
-        # *** Critical: commit before doing anything else ***
-        db.commit()
+        db.commit()  # ← THE CRITICAL FIX
         logger.info("Inserted product id=%s url=%r", product_id, url)
     except sqlite3.IntegrityError as exc:
         db.rollback()
@@ -365,7 +361,7 @@ def add_product():
         logger.exception("DB error inserting product url=%r", url)
         return jsonify({"error": "Database error", "detail": str(exc)}), 500
 
-    # Immediate first price check (best-effort – don't fail the response)
+    # Immediate first price check (best-effort — don't fail the whole response)
     try:
         check_result = _check_product(product_id)
         logger.info("Initial price check for product id=%s: %s", product_id, check_result)
@@ -404,8 +400,7 @@ def update_product(product_id):
     logger.info("PUT /api/products/%s data=%r", product_id, data)
     db = get_db()
 
-    product = db.execute("SELECT id FROM products WHERE id = ?", (product_id,)).fetchone()
-    if not product:
+    if not db.execute("SELECT id FROM products WHERE id = ?", (product_id,)).fetchone():
         return jsonify({"error": "Not found"}), 404
 
     fields, values = [], []
@@ -435,8 +430,7 @@ def update_product(product_id):
 def delete_product(product_id):
     logger.info("DELETE /api/products/%s", product_id)
     db = get_db()
-    product = db.execute("SELECT id FROM products WHERE id = ?", (product_id,)).fetchone()
-    if not product:
+    if not db.execute("SELECT id FROM products WHERE id = ?", (product_id,)).fetchone():
         return jsonify({"error": "Not found"}), 404
     try:
         db.execute("DELETE FROM products WHERE id = ?", (product_id,))
@@ -484,7 +478,6 @@ SETTING_KEYS = [
 @app.route("/api/settings", methods=["GET"])
 def get_settings():
     logger.debug("GET /api/settings")
-    # Use a fresh read so we don't need g.db
     with app.app_context():
         return jsonify({k: _get_setting(k) for k in SETTING_KEYS})
 
@@ -504,14 +497,13 @@ def save_settings():
         logger.exception("DB error saving settings")
         return jsonify({"error": "Database error", "detail": str(exc)}), 500
 
-    # Reschedule if interval changed
     if "check_interval" in data:
         try:
             interval = max(5, int(data["check_interval"]))
             _reschedule(interval)
             logger.info("Check interval updated to %d minutes", interval)
         except (ValueError, TypeError) as exc:
-            logger.warning("Invalid check_interval value %r: %s", data.get("check_interval"), exc)
+            logger.warning("Invalid check_interval %r: %s", data.get("check_interval"), exc)
 
     return jsonify({"saved": True})
 
@@ -524,7 +516,6 @@ scheduler = BackgroundScheduler(daemon=True)
 
 
 def _scheduled_check_all():
-    """Called by APScheduler on a timer."""
     logger.info("Scheduled price check triggered")
     with app.app_context():
         db = get_db()
@@ -540,7 +531,6 @@ def _scheduled_check_all():
 
 
 def _reschedule(interval_minutes: int):
-    """Remove existing job and add a new one with the updated interval."""
     if scheduler.get_job("price_check"):
         scheduler.remove_job("price_check")
     scheduler.add_job(

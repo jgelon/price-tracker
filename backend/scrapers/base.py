@@ -1,11 +1,11 @@
 """
 Base scraper class that all site-specific scrapers inherit from.
-Provides shared utilities: session management, JSON-LD parsing, OG meta parsing.
+Provides shared utilities: HTTP fetch, price parsing, JSON-LD, OG meta, __NEXT_DATA__.
 """
 
+import json
 import logging
 import re
-import json
 from abc import ABC, abstractmethod
 
 import requests
@@ -45,7 +45,7 @@ class ScraperResult:
 
 class BaseScraper(ABC):
     """
-    Abstract base scraper.  Subclasses must implement `scrape(url)`.
+    Abstract base scraper.  Subclasses must implement `can_handle(url)` and `scrape(url)`.
     Shared helpers are available as protected methods.
     """
 
@@ -83,19 +83,21 @@ class BaseScraper(ABC):
     def _parse_price(raw: str) -> float | None:
         """
         Convert a messy price string like '€ 12,95' or '12.95' to a float.
+        Handles both European (1.234,56) and US (1,234.56) formats.
         Returns None if parsing fails.
         """
         if not raw:
             return None
-        # Remove currency symbols and whitespace
+        # Strip currency symbols, whitespace, and other non-numeric characters
         cleaned = re.sub(r"[^\d,.]", "", raw.strip())
-        # Normalise European comma-decimal: '12,95' → '12.95'
-        # but keep thousands separators correct: '1.234,56' → '1234.56'
+        if not cleaned:
+            return None
+        # Normalise decimal separator
         if "," in cleaned and "." in cleaned:
-            # Thousands dot + decimal comma  e.g. 1.234,56
+            # European thousands + decimal: 1.234,56 → 1234.56
             cleaned = cleaned.replace(".", "").replace(",", ".")
         elif "," in cleaned:
-            # Only comma → treat as decimal separator  e.g. 12,95
+            # Comma as decimal: 12,95 → 12.95
             cleaned = cleaned.replace(",", ".")
         try:
             value = float(cleaned)
@@ -118,8 +120,8 @@ class BaseScraper(ABC):
             except (json.JSONDecodeError, TypeError):
                 continue
 
-            # Handle both single objects and arrays/graphs
-            items = []
+            # Handle single objects, arrays, and @graph
+            items: list = []
             if isinstance(data, list):
                 items = data
             elif isinstance(data, dict):
@@ -128,8 +130,7 @@ class BaseScraper(ABC):
             for item in items:
                 if not isinstance(item, dict):
                     continue
-                item_type = item.get("@type", "")
-                if item_type not in ("Product", "IndividualProduct"):
+                if item.get("@type") not in ("Product", "IndividualProduct"):
                     continue
 
                 name = item.get("name")
@@ -157,3 +158,39 @@ class BaseScraper(ABC):
             except (ValueError, TypeError):
                 pass
         return None
+
+    @staticmethod
+    def _extract_next_data(soup: BeautifulSoup) -> dict | None:
+        """
+        Extract and parse the __NEXT_DATA__ JSON blob injected by Next.js apps.
+        Returns the parsed dict, or None if not found / invalid.
+        """
+        tag = soup.find("script", id="__NEXT_DATA__")
+        if not tag or not tag.string:
+            return None
+        try:
+            data = json.loads(tag.string)
+            logger.debug("__NEXT_DATA__ parsed (top-level keys=%s)", list(data.keys()))
+            return data
+        except (json.JSONDecodeError, TypeError) as exc:
+            logger.debug("__NEXT_DATA__ parse error: %s", exc)
+            return None
+
+    @staticmethod
+    def _deep_find(obj, *keys):
+        """
+        Traverse a nested dict/list following the given keys in order.
+        Returns the value if found, else None.
+        Example: _deep_find(data, 'props', 'pageProps', 'product', 'price')
+        """
+        current = obj
+        for key in keys:
+            if isinstance(current, dict):
+                current = current.get(key)
+            elif isinstance(current, list) and isinstance(key, int):
+                current = current[key] if key < len(current) else None
+            else:
+                return None
+            if current is None:
+                return None
+        return current

@@ -10,7 +10,7 @@ Usage:
         print("Failed:", result.error)
 
 To add a new shop scraper:
-  1. Create scrapers/myshop.py and implement BaseScraper
+  1. Create scrapers/myshop.py and subclass BaseScraper
   2. Import it here and add an instance to SCRAPERS (before GenericScraper)
 """
 
@@ -34,7 +34,7 @@ SCRAPERS = [
 def scrape_url(url: str) -> ScraperResult:
     """
     Find the first scraper that can handle *url* and run it.
-    Always returns a ScraperResult (never raises).
+    Always returns a ScraperResult — never raises.
     """
     for scraper in SCRAPERS:
         if scraper.can_handle(url):
@@ -48,15 +48,10 @@ def scrape_url(url: str) -> ScraperResult:
                 result = ScraperResult(None, None, error=f"Scraper crashed: {exc}")
             logger.info(
                 "scrape_url result: scraper=%r url=%r success=%s price=%s error=%r",
-                scraper.name,
-                url,
-                result.success,
-                result.price,
-                result.error,
+                scraper.name, url, result.success, result.price, result.error,
             )
             return result
 
-    # Should never reach here because GenericScraper.can_handle() always returns True
     logger.error("No scraper matched URL %r", url)
     return ScraperResult(None, None, error="No suitable scraper found")
 

@@ -7,19 +7,17 @@ services:
     container_name: pricewatch-backend
     restart: unless-stopped
     environment:
-      - DATABASE_URL=sqlite:////data/prices.db
+      - DB_PATH=/data/pricewatch.db
+      - LOG_LEVEL=INFO        # set to DEBUG for verbose scraper output
     volumes:
       - pricewatch-data:/data
-    # Expose backend directly (optional, useful for debugging)
-    # ports:
-    #   - "5000:5000"
 
   frontend:
     build: ./frontend
     container_name: pricewatch-frontend
     restart: unless-stopped
     ports:
-      - "18080:80"       # Access UI at http://NAS-IP:8080
+      - "8080:80"
     depends_on:
       - backend
 

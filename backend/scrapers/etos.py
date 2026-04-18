@@ -31,12 +31,11 @@ class EtosScraper(BaseScraper):
             logger.info("[etos] JSON-LD → price=%.2f name=%r", price, name)
             return ScraperResult(price, name)
 
-        # --- Strategy 2: Etos-specific CSS selectors ---
-        # Product name
+        # --- Strategy 2: Etos-specific CSS ---
         name_tag = soup.select_one("h1.product-title, h1[data-test='product-title']")
         name = name_tag.get_text(strip=True) if name_tag else None
 
-        # Price: Etos renders euros and cents in separate spans
+        # Etos renders euros and cents in separate spans
         euros_tag = soup.select_one(
             "span.price__euros, [data-test='price-euros'], .product-price .euros"
         )
@@ -50,10 +49,10 @@ class EtosScraper(BaseScraper):
                 raw += "." + cents_tag.get_text(strip=True).lstrip(",").lstrip(".")
             price = self._parse_price(raw)
             if price is not None:
-                logger.info("[etos] CSS fallback → price=%.2f name=%r", price, name)
+                logger.info("[etos] CSS → price=%.2f name=%r", price, name)
                 return ScraperResult(price, name)
 
-        # Last resort: any element with a price-like class
+        # Last resort: any price-like element
         generic = soup.select_one(".price, [class*='price']")
         if generic:
             price = self._parse_price(generic.get_text(strip=True))
