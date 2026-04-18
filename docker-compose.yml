@@ -19,7 +19,7 @@ services:
     container_name: pricewatch-frontend
     restart: unless-stopped
     ports:
-      - "8080:80"       # Access UI at http://NAS-IP:8080
+      - "18080:80"       # Access UI at http://NAS-IP:8080
     depends_on:
       - backend
 
