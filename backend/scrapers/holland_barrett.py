@@ -1,14 +1,18 @@
 """
 Scraper for hollandandbarrett.nl (and .com)
 
-H&B NL is a Next.js / Bloomreach app. Product price lives inside
-<script id="__NEXT_DATA__"> — there is no JSON-LD and no OG price meta.
+H&B NL is a Next.js / Bloomreach app.
 
-The exact JSON path has changed several times; we therefore try every known
-path AND fall back to a full recursive scan of the entire tree, looking for
-any key named 'nowPrice', 'salePrice', 'currentPrice', 'price', etc.
+Strategy order (updated):
+  1. JSON-LD  — H&B now injects this on every PDP and it reflects the live
+                selling price (including promotions). Most reliable.
+  2. window.universal_variable inline script  — analytics blob with unit_price.
+  3. __NEXT_DATA__  — fallback; the huge Next.js blob can contain unrelated
+                      price keys (related products, productIDs, etc.) so we
+                      only reach here when the above two are absent.
+  4. CSS selectors  — last resort.
 
-Known __NEXT_DATA__ shapes (newest first):
+Known __NEXT_DATA__ shapes (for reference, still used in strategy 3):
   props.pageProps.productDetails.prices.nowPrice.price    <- Bloomreach CMS
   props.pageProps.productDetails.price
   props.pageProps.product.price / salePrice / currentPrice
@@ -16,6 +20,7 @@ Known __NEXT_DATA__ shapes (newest first):
   props.pageProps.initialState.*.price                    <- Redux store
 """
 
+import json
 import logging
 import re
 
@@ -42,7 +47,40 @@ class HollandBarrettScraper(BaseScraper):
         if soup is None:
             return ScraperResult(None, None, error="Failed to fetch page")
 
-        # Strategy 1: __NEXT_DATA__
+        # Strategy 1: JSON-LD — H&B NL now injects this on every PDP and it
+        # always reflects the current selling price (incl. discounts).
+        price, name = self._extract_json_ld_price(soup)
+        if price is not None:
+            logger.info("[holland_barrett] JSON-LD -> price=%.2f name=%r", price, name)
+            return ScraperResult(price, name)
+
+        # Strategy 2: window.universal_variable inline script
+        # H&B injects an analytics blob with {"product": {"unit_price": "3.59", ...}}
+        for script in soup.find_all("script"):
+            txt = script.string or ""
+            if "universal_variable" not in txt or "unit_price" not in txt:
+                continue
+            try:
+                match = re.search(
+                    r'window\.universal_variable\s*=\s*(\{.*?\})\s*(?:</script>|;?\s*$)',
+                    txt, re.DOTALL
+                )
+                if match:
+                    uv = json.loads(match.group(1))
+                    unit_price = uv.get("product", {}).get("unit_price")
+                    pname = uv.get("product", {}).get("name") or uv.get("page", {}).get("name")
+                    if unit_price is not None:
+                        p = self._coerce(unit_price)
+                        if p:
+                            logger.info("[holland_barrett] universal_variable -> price=%.2f name=%r", p, pname)
+                            return ScraperResult(p, pname)
+            except Exception as exc:
+                logger.debug("[holland_barrett] universal_variable parse error: %s", exc)
+
+        # Strategy 3: __NEXT_DATA__ — fallback for pages without JSON-LD.
+        # Note: the recursive scan can latch onto unrelated price keys (related
+        # products, productIDs, etc.) inside the huge Next.js blob, so this is
+        # kept as a fallback rather than the primary strategy.
         next_data = self._extract_next_data(soup)
         if next_data:
             logger.debug("[holland_barrett] __NEXT_DATA__ found, parsing...")
@@ -54,13 +92,7 @@ class HollandBarrettScraper(BaseScraper):
         else:
             logger.warning("[holland_barrett] No __NEXT_DATA__ in page — site may have changed")
 
-        # Strategy 2: JSON-LD (older pages)
-        price, name = self._extract_json_ld_price(soup)
-        if price is not None:
-            logger.info("[holland_barrett] JSON-LD -> price=%.2f name=%r", price, name)
-            return ScraperResult(price, name)
-
-        # Strategy 3: CSS selectors
+        # Strategy 4: CSS selectors
         name_tag = soup.select_one("h1.productName, h1[data-test='product-name'], h1.product__name, h1")
         name = name_tag.get_text(strip=True) if name_tag else None
         for sel in ("[data-test='product-price']", "span[class*='price']", "p[class*='price']",
