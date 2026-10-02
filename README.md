@@ -1,12 +1,12 @@
 # PriceWatch 🛒
 
-A self-hosted price tracker with a web portal, automatic price checking, and alerts via Slack, Email, and Pushbullet.
+A self-hosted price tracker with a web portal, automatic price checking, and alerts via Slack, Discord, Email, and Pushbullet.
 
 ## Features
 
 - **Web portal** – add/remove products, view price history charts, pause tracking
 - **Smart scraping** – JSON-LD structured data + CSS fallbacks for etos.nl, holland & barrett, and generic shops
-- **Alerts** – Slack webhook, Email (SMTP), Pushbullet
+- **Alerts** – Slack webhook, Discord webhook, Email (SMTP), Pushbullet
 - **Scheduled checks** – configurable interval (default: every 60 minutes)
 - **SQLite** – zero external database needed; data persists in a Docker volume
 - **Price history** – sparkline chart per product
@@ -51,6 +51,7 @@ price-tracker/
 | Setting | Description |
 |---------|-------------|
 | Slack Webhook URL | `https://hooks.slack.com/services/XXX/YYY/ZZZ` |
+| Discord Webhook URL | `https://discord.com/api/webhooks/ID/TOKEN` (Channel settings → Integrations → Webhooks) |
 | SMTP Host/Port | e.g. `smtp.gmail.com` / `587` |
 | SMTP User/Pass | Your email + app password |
 | Notify Email | Where to send alerts |

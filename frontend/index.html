@@ -268,6 +268,10 @@
         <div class="form-group"><label class="form-label">Webhook URL</label><input class="form-input" id="s-slack" placeholder="https://hooks.slack.com/services/..." /><div class="form-hint">Create an Incoming Webhook in your Slack App settings</div></div>
       </div>
       <div class="settings-section">
+        <div class="settings-section-title">🎮 Discord Notifications</div>
+        <div class="form-group"><label class="form-label">Webhook URL</label><input class="form-input" id="s-discord" placeholder="https://discord.com/api/webhooks/..." /><div class="form-hint">Channel settings → Integrations → Webhooks → New Webhook → Copy Webhook URL</div></div>
+      </div>
+      <div class="settings-section">
         <div class="settings-section-title">📧 Email Notifications</div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">SMTP Host</label><input class="form-input" id="s-smtp-host" placeholder="smtp.gmail.com" /></div>
@@ -721,6 +725,7 @@ async function loadSettings() {
   try {
     const s = await apiFetch('/api/settings');
     document.getElementById('s-slack').value       = s.slack_webhook||'';
+    document.getElementById('s-discord').value     = s.discord_webhook||'';
     document.getElementById('s-notify-email').value= s.notify_email||'';
     document.getElementById('s-smtp-host').value   = s.smtp_host||'';
     document.getElementById('s-smtp-port').value   = s.smtp_port||'587';
@@ -735,6 +740,7 @@ async function saveSettings() {
   try {
     await apiFetch('/api/settings',{method:'POST',body:JSON.stringify({
       slack_webhook:  document.getElementById('s-slack').value.trim(),
+      discord_webhook: document.getElementById('s-discord').value.trim(),
       notify_email:   document.getElementById('s-notify-email').value.trim(),
       smtp_host:      document.getElementById('s-smtp-host').value.trim(),
       smtp_port:      document.getElementById('s-smtp-port').value.trim(),

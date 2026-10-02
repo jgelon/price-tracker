@@ -254,6 +254,19 @@ def _send_alerts(product, current_price, previous_price, pct_drop):
         except Exception as exc:
             _log("ERROR", f"Slack alert failed: {exc}", product_id=product["id"])
 
+    discord_url = _get_setting("discord_webhook")
+    if discord_url:
+        try:
+            import requests as req_lib
+            req_lib.post(
+                discord_url,
+                json={"content": message[:2000], "username": "PriceWatch"},
+                timeout=10,
+            ).raise_for_status()
+            _log("INFO", "Discord alert sent", product_id=product["id"])
+        except Exception as exc:
+            _log("ERROR", f"Discord alert failed: {exc}", product_id=product["id"])
+
     smtp_host = _get_setting("smtp_host")
     smtp_user = _get_setting("smtp_user")
     notify_email = _get_setting("notify_email")
@@ -505,6 +518,7 @@ def clear_logs():
 
 SETTING_KEYS = [
     "slack_webhook",
+    "discord_webhook",
     "smtp_host", "smtp_port", "smtp_user", "smtp_pass", "notify_email",
     "pushbullet_key",
     "check_interval",
